@@ -1,0 +1,21 @@
+#+Title: Projeto 1 - MO420
+#+Author: Ieremies V. F. Romero
+
+* Problema
+* Formulação Inteira
+Seja um grafo $G = (V,E)$, $V' = V \setminus \{s,t\}$. $x_{ij}$ é igual a $1$ se, e somente se, o caminhão percorre a aresta $(i,j) \in E$. $y_{ij}$ é igual a $1$ se, e somente se, o drone percorre a aresta $(i,j) \in E$.
+\begin{alignat}{4}
+& \omit\rlap{minimize  $\displaystyle \sum_{i \in V} \sum_{j \in V j, \neq i} x_{ij} c_{ij} + y_{ij} d_{ij} $} \\
+& \mbox{sujeito a}&& \quad & \sum_{i \in V'} x_{si} &= \sum_{i \in V'} x_{it} = 1                 & \quad &  \\
+&                 &&       & \sum_{j \in V', j \neq i} x_{ji} &= \sum_{j \in V' j \neq i} x_{ij}     &       & \forall i \in V'   \\
+&                 &&       & a_i + c_{ij} &\leq a_j + M(1 - x_{ij})                             &       & \forall i,j \in V \\
+&                 &&       & y_{ij} &= y_{ji}                                                   &       & \forall i \in V   \\
+&                 &&       & \sum_{k \in V', k \neq i} x_{ki} &\geq y_{ij}                                &       & \forall i,j \in V' \\
+&                 &&       & \sum_{j \in V', j \neq i} x_{ji} + y_{ji} &= 1                        &       & \forall i \in V'   \\
+&                 &&       & y_{ij} c_{ij} + y_{ji} c_{ji} &\leq D                               &       & \forall i,j \in V  \\
+&                 &&       & x_{ij} y_{ij} &\in \{0,1\}                                         &       & \forall i,j \in V' \\
+&                 &&       & a_i &\in \mathbb{R}_+                                             &         & \forall i \in V
+\end{alignat}
+
+* Relaxação Lagrangiana
+* Resultados

@@ -1,0 +1,59 @@
+Oi Pessoal! 
+
+O Gurobi é livre para instituições acadêmicas. Assim, deve ser gerado 
+uma licença pelo IP da Unicamp. Talvez dê para fazer usando vpn, mas 
+não fiz o teste. Aparentemente vc deve estar no IP da Unicamp só para 
+gerar a licença, que é um dos passos abaixo. 
+Depois que está instalado, eu consigo executar programas com Gurobi 
+sem precisar nem de Internet. Abaixo coloco os passos que fiz para 
+atualizar/instalar o Gurobi e a licença anual num Mac. 
+
+
+1. Vá para o site do Gurobi:
+   Se não tiver conta, faça o cadastro pelo email da Unicamp/Universidade
+   (o Gurobi é livre para a área acadêmica).
+   https://www.gurobi.com/
+   https://www.gurobi.com/downloads/gurobi-software/
+   Depois do cadastro, faça o login para continuar nos próximos passos.
+
+2. Faça o download do Gurobi Optimizer para seu ambiente/máquina pelo link
+   http://user.gurobi.com/download/gurobi-optimizer
+   e faça a instalação na sua máquina.
+   (no caso do MacOS, usei algo como "open gurobi9.1.2_macos_xxxx.pkg")
+
+3. Ao fazer o login pela conta acadêmica, obtenha a licença acadêmica 
+   https://www.gurobi.com/downloads/end-user-license-agreement-academic/
+   Ao concordar com os termos, você é redirecionado para uma página
+   (https://www.gurobi.com/downloads/free-academic-license/)
+   onde aparece um código alfa numérico. O código tem um formato
+   com uma cara do comando abaixo. 
+   Você deve executar o comando grbgetkey com o código da licença: 
+
+   grbgetkey 99999999-9999-9999-9999-999999999999 
+
+   (a própria página sugere fazer copy/paste num terminal).
+   Em algum momento, vai pedir o diretório onde será armazenado o arquivo da
+   licença (eu prefiro guardar em um diretório separado com as coisas do Gurobi
+   para não poluir a pasta da raiz).
+   Além disso, você vai precisar colocar o path completo deste arquivo de licença
+   na seguinte variável de ambiente:
+   GRB_LICENSE_FILE 
+   (eu deixo no arquivo .bash_profile um trecho parecido com o abaixo
+   GRB_LICENSE_FILE=/Users/fkm/diretorio_do_gurobi/licenses/gurobi.lic
+   para que a variável sempre esteja disponível)
+
+7. Provavelmente no Linux, você precisará também colocar as seguintes duas linhas
+   no .bashrc ou .bash_profile, corrigindo o path "/opt/gurobi912/linux64/lib"
+   pelo path correto da sua instalação do Gurobi.
+   
+   LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/opt/gurobi912/linux64/lib
+   export LD_LIBRARY_PATH
+   
+
+Se tiver alguma informação melhor ou procedimentos diferentes para 
+outros sistemas 
+operacionais, peço que escreva para o grupo. 
+
+Abraços, 
+
+Flávio

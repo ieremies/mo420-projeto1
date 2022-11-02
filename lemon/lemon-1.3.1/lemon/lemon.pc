@@ -1,0 +1,10 @@
+prefix=/home/ieremies/proj/grad/pli/lemon/lemon-1.3.1
+exec_prefix=/home/ieremies/proj/grad/pli/lemon/lemon-1.3.1/bin
+libdir=/home/ieremies/proj/grad/pli/lemon/lemon-1.3.1/lib
+includedir=/home/ieremies/proj/grad/pli/lemon/lemon-1.3.1/include
+
+Name: LEMON
+Description: Library for Efficient Modeling and Optimization in Networks
+Version: 1.3.1
+Libs: -L${libdir} -lemon     
+Cflags: -I${includedir}
