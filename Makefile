@@ -22,7 +22,7 @@ LEMONLIB  = -L$(LEMONDIR)/lib   -lemon
 #================= GUROBI =====================================================
 # If Gurobi is installed, there is a program called gurobi_cl that can be used to
 # detect the version
-GUROBI_DIR = /Library/gurobi951/macos_universal2
+GUROBI_DIR = /opt/gurobi952/linux64
 FLAGVERSION := $(shell gurobi_cl --version | cut -c 26,28 | head -n 1)
 
 HOMEDIR = .
@@ -47,7 +47,7 @@ else
         $(info *)
 	PLATFORM = linux64
 	CC      = g++
-	CC_ARGS    = -m64 -O2 -Wall -std=c++11 -D_GLIBCXX_USE_CXX11_ABI=0
+	CC_ARGS    = -g -m64 -O2 -Wall -std=c++11 -D_GLIBCXX_USE_CXX11_ABI=0
 	CC_LIB   = -lm -lpthread
 endif
 GUROBI_INC = -I$(GUROBI_DIR)/include

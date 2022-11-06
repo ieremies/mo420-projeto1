@@ -111,91 +111,233 @@ bool Read_Proj1_Instance(string filename, Digraph &dg, DNodeStringMap &vname,
   return (r);
 }
 
-// TODO Faca um algoritmo exato, trocando a construcao fake por uma que usa
+// Faca um algoritmo exato, trocando a construcao fake por uma que usa
 // formulacao inteira.
 bool Exact_Algorithm(Drone_Data &D, DNodeArcMap &car_route_predArc,
                      DNodeArcMap &drone_in, DNodeArcMap &drone_out) {
-  // Construindo uma solucao fake. Gera um caminho minimo de
-  // source ate' target e depois pega um arco qualquer entrando
-  // e outro arco qualquer saindo, para cada um dos outros vertices.
-  Dijkstra<ListDigraph, ArcValueMap> dijkstra(D.dg, D.car_cost);
-  DNodeValueMap dist(D.dg);
-  dijkstra.distMap(dist);
-  dijkstra.init();
-  dijkstra.addSource(D.source);
-  dijkstra.start();
 
-  DNodeBoolMap car_visit(D.dg);
-  for (DNodeIt v(D.dg); v != INVALID; ++v)
-    car_visit[v] = false;
-  DNode v;
-  Arc a;
-  v = D.target;
-  car_visit[v] = true;
-  while (v != D.source) {
-    car_route_predArc[v] = dijkstra.predArc(v);
-    v = D.dg.source(car_route_predArc[v]);
-    car_visit[v] = true;
+  string aux;
+
+  Digraph::ArcMap<GRBVar> x(D.dg);  // arestas usadas pelo caminhão
+  Digraph::ArcMap<GRBVar> y(D.dg);  // arestas usadas pelo drone
+  Digraph::NodeMap<GRBVar> u(D.dg); //
+
+  GRBEnv env = GRBEnv();
+  GRBModel model = GRBModel(env);
+  GRBLinExpr obj;
+  model.set(GRB_StringAttr_ModelName, "TSP-D");
+  model.set(GRB_IntAttr_ModelSense, GRB_MINIMIZE);
+
+  // Soma dos custos das arestas utilizadas pelo caminhão
+  for (ArcIt e(D.dg); e != INVALID; ++e) {
+    x[e] = model.addVar(0.0, 1.0, 0.0, GRB_BINARY, "x");
+    y[e] = model.addVar(0.0, 1.0, 0.0, GRB_BINARY, "y");
+    obj += x[e] * D.car_cost[e] + y[e] * D.drone_cost[e];
   }
 
-  for (DNodeIt v(D.dg); v != INVALID; ++v) {
-    if (!car_visit[v]) {
-      // Pega o primeiro arco que entra e o primeiro que sai
-      // Obviamente esta' errado, mas so' para ver alguma atribuicao de arestas
-      // p/ solucao
-      for (InArcIt a(D.dg, v); a != INVALID; ++a) {
-        drone_in[v] = a;
-        break;
+  for (DNodeIt n(D.dg); n != INVALID; ++n)
+    u[n] = model.addVar(0.0, D.nnodes, 0.0, GRB_CONTINUOUS, "u");
+
+  model.setObjective(obj, GRB_MINIMIZE);
+  model.update();
+
+  // soma das arestas escolhidas saindo de source = 1
+  GRBLinExpr c1;
+  for (OutArcIt e(D.dg, D.source); e != INVALID; ++e)
+    c1 += x[e];
+  model.addConstr(c1 == 1);
+
+  // soma das arestas escolhidas chegando em target = 1
+  GRBLinExpr c2;
+  for (InArcIt e(D.dg, D.target); e != INVALID; ++e)
+    c2 += x[e];
+  model.addConstr(c2 == 1);
+
+  // manutenção de fluxo
+  for (DNodeIt n(D.dg); n != INVALID; ++n) {
+    if (n == D.source or n == D.target)
+      continue;
+    GRBLinExpr c_fluxo;
+    for (InArcIt e(D.dg, n); e != INVALID; ++e)
+      c_fluxo += x[e];
+    for (OutArcIt e(D.dg, n); e != INVALID; ++e)
+      c_fluxo -= x[e];
+    model.addConstr(c_fluxo == 0);
+  }
+
+  // subciclo
+  for (ArcIt a(D.dg); a != INVALID; ++a)
+    if (D.dg.target(a) != D.source)
+      model.addConstr(u[D.dg.source(a)] - u[D.dg.target(a)] + D.nnodes * x[a] <=
+                      D.nnodes - 1);
+
+  // ida e volta do drone dentro do limite dele
+  for (ArcIt a(D.dg); a != INVALID; ++a)
+    for (ArcIt b(D.dg); b != INVALID; ++b)
+      if (D.dg.source(a) == D.dg.target(b) and
+          D.dg.target(a) == D.dg.source(b)) {
+        model.addConstr(y[a] == y[b]);
+        model.addConstr(y[a] * D.drone_cost[a] + y[b] * D.drone_cost[b] <=
+                        D.drone_limit);
       }
-      for (OutArcIt a(D.dg, v); a != INVALID; ++a) {
-        drone_out[v] = a;
-        break;
-      }
+
+  // Para todo arco do drone, deve haver um arco do caminhão que chega nele
+  for (ArcIt a(D.dg); a != INVALID; ++a) {
+    GRBLinExpr c;
+    for (InArcIt e(D.dg, D.dg.source(a)); e != INVALID; ++e)
+      c += x[e];
+    for (InArcIt e(D.dg, D.dg.target(a)); e != INVALID; ++e)
+      c += x[e];
+    model.addConstr(c >= y[a]);
+  }
+
+  // Todos os vértices devem ser visitados ao menos uma vez
+  for (DNodeIt n(D.dg); n != INVALID; ++n) {
+    GRBLinExpr c;
+    for (InArcIt e(D.dg, n); e != INVALID; ++e)
+      c += x[e] + y[e];
+    model.addConstr(c >= 1);
+  }
+
+  model.optimize();
+
+  for (ArcIt e(D.dg); e != INVALID; ++e) {
+    if (x[e].get(GRB_DoubleAttr_X) > 0)
+      car_route_predArc[D.dg.target(e)] = e;
+    if (y[e].get(GRB_DoubleAttr_X) > 0) {
+      drone_in[D.dg.target(e)] = e;
+      drone_out[D.dg.source(e)] = e;
     }
   }
+
+  return true;
 }
+
+double pi(int i) { return 168 / (i + 1); }
 
 // Faca uma heuristica, trocando a construcao fake por uma heuristica
 bool Heuristic_Algorithm(Drone_Data &D, DNodeArcMap &car_route_predArc,
                          DNodeArcMap &drone_in, DNodeArcMap &drone_out) {
-  // Construindo uma solucao fake. Gera um caminho minimo de
-  // source ate' target e depois pega um arco qualquer entrando
-  // e outro arco qualquer saindo, para cada um dos outros vertices.
-  Dijkstra<ListDigraph, ArcValueMap> dijkstra(D.dg, D.car_cost);
-  DNodeValueMap dist(D.dg);
-  dijkstra.distMap(dist);
-  dijkstra.init();
-  dijkstra.addSource(D.source);
-  dijkstra.start();
 
-  DNodeBoolMap car_visit(D.dg);
-  for (DNodeIt v(D.dg); v != INVALID; ++v)
-    car_visit[v] = false;
-  DNode v;
-  Arc a;
-  v = D.target;
-  car_visit[v] = true;
-  while (v != D.source) {
-    car_route_predArc[v] = dijkstra.predArc(v);
-    v = D.dg.source(car_route_predArc[v]);
-    car_visit[v] = true;
-  }
+  // mu_0
+  double last = 0;
+  Digraph::NodeMap<double> mu(D.dg);
+  for (DNodeIt n(D.dg); n != INVALID; ++n)
+    mu[n] = 0.0;
 
-  for (DNodeIt v(D.dg); v != INVALID; ++v) {
-    if (!car_visit[v]) {
-      // Pega o primeiro arco que entra e o primeiro que sai
-      // Obviamente esta' errado, mas so' para ver alguma atribuicao de arestas
-      // p/ solucao
-      for (InArcIt a(D.dg, v); a != INVALID; ++a) {
-        drone_in[v] = a;
-        break;
+  Digraph::ArcMap<GRBVar> x(D.dg);  // arestas usadas pelo caminhão
+  Digraph::ArcMap<GRBVar> y(D.dg);  // arestas usadas pelo drone
+  Digraph::NodeMap<GRBVar> u(D.dg); //
+
+  for (int i = 0;; i++) {
+
+    //  ======================= GUROBI ==============================
+
+    GRBEnv env = GRBEnv();
+    GRBModel model = GRBModel(env);
+    GRBLinExpr obj;
+    model.set(GRB_StringAttr_ModelName, "TSP-D");
+    model.set(GRB_IntAttr_ModelSense, GRB_MINIMIZE);
+
+    // Soma dos custos das arestas utilizadas pelo caminhão
+    for (ArcIt e(D.dg); e != INVALID; ++e) {
+      x[e] = model.addVar(0.0, 1.0, 0.0, GRB_BINARY, "x");
+      y[e] = model.addVar(0.0, 1.0, 0.0, GRB_BINARY, "y");
+      obj += x[e] * (D.car_cost[e] - mu[D.dg.source(e)]) +
+             y[e] * (D.drone_cost[e] - mu[D.dg.source(e)]);
+    }
+
+    for (DNodeIt n(D.dg); n != INVALID; ++n) {
+      u[n] = model.addVar(0.0, D.nnodes, 0.0, GRB_CONTINUOUS, "u");
+      obj += mu[n];
+    }
+
+    model.setObjective(obj, GRB_MINIMIZE);
+    model.update();
+
+    // soma das arestas escolhidas saindo de source = 1
+    GRBLinExpr c1;
+    for (OutArcIt e(D.dg, D.source); e != INVALID; ++e)
+      c1 += x[e];
+    model.addConstr(c1 == 1);
+
+    // soma das arestas escolhidas chegando em target = 1
+    GRBLinExpr c2;
+    for (InArcIt e(D.dg, D.target); e != INVALID; ++e)
+      c2 += x[e];
+    model.addConstr(c2 == 1);
+
+    // manutenção de fluxo
+    for (DNodeIt n(D.dg); n != INVALID; ++n) {
+      if (n == D.source or n == D.target)
+        continue;
+      GRBLinExpr c_fluxo;
+      for (InArcIt e(D.dg, n); e != INVALID; ++e)
+        c_fluxo += x[e];
+      for (OutArcIt e(D.dg, n); e != INVALID; ++e)
+        c_fluxo -= x[e];
+      model.addConstr(c_fluxo == 0);
+    }
+
+    // subciclo
+    for (ArcIt a(D.dg); a != INVALID; ++a)
+      if (D.dg.target(a) != D.source)
+        model.addConstr(u[D.dg.source(a)] - u[D.dg.target(a)] +
+                            D.nnodes * x[a] <=
+                        D.nnodes - 1);
+
+    // ida e volta do drone dentro do limite dele
+    for (ArcIt a(D.dg); a != INVALID; ++a)
+      for (ArcIt b(D.dg); b != INVALID; ++b)
+        if (D.dg.source(a) == D.dg.target(b) and
+            D.dg.target(a) == D.dg.source(b)) {
+          model.addConstr(y[a] == y[b]);
+          model.addConstr(y[a] * D.drone_cost[a] + y[b] * D.drone_cost[b] <=
+                          D.drone_limit);
+        }
+
+    // Para todo arco do drone, deve haver um arco do caminhão que chega nele
+    for (ArcIt a(D.dg); a != INVALID; ++a) {
+      GRBLinExpr c;
+      for (InArcIt e(D.dg, D.dg.source(a)); e != INVALID; ++e)
+        c += x[e];
+      for (InArcIt e(D.dg, D.dg.target(a)); e != INVALID; ++e)
+        c += x[e];
+      model.addConstr(c >= y[a]);
+    }
+
+    model.optimize();
+
+    // ============== PARADA =============================
+    if (abs(last - model.get(GRB_DoubleAttr_ObjVal)) < 0.0001 || i >= 100) {
+      for (ArcIt e(D.dg); e != INVALID; ++e) {
+        if (x[e].get(GRB_DoubleAttr_X) > 0)
+          car_route_predArc[D.dg.target(e)] = e;
+        if (y[e].get(GRB_DoubleAttr_X) > 0) {
+          drone_in[D.dg.target(e)] = e;
+          drone_out[D.dg.source(e)] = e;
+        }
       }
-      for (OutArcIt a(D.dg, v); a != INVALID; ++a) {
-        drone_out[v] = a;
-        break;
-      }
+      return true;
+    }
+    last = model.get(GRB_DoubleAttr_ObjVal);
+
+    // ============== SUBGRADIENTE =======================
+    for (DNodeIt n(D.dg); n != INVALID; ++n) {
+      // Calcula Ax - b
+      double viola = +1.0;
+      for (OutArcIt a(D.dg, n); a != INVALID; ++a)
+        viola -= x[a].get(GRB_DoubleAttr_X) + y[a].get(GRB_DoubleAttr_X);
+      cout << viola << '\n';
+
+      // mu_k+1 = max { u_k - PI (Ax_k - b), 0 }
+      mu[n] = mu[n] + pi(i) * viola;
+      if (mu[n] < 0)
+        mu[n] = 0.0;
     }
   }
+
+  return true;
 }
 
 bool View_Car_Drone_Routing(Drone_Data &D, DNodeArcMap &car_route_predArc,
@@ -247,13 +389,15 @@ bool View_Car_Drone_Routing(Drone_Data &D, DNodeArcMap &car_route_predArc,
       DA.SetColor(v, "Cyan");
     }
   }
-  DA.SetLabel("Solucao fake de valor " + DoubleToString(custo_total));
+  DA.SetLabel("Solucao de valor " + DoubleToString(custo_total));
   DA.View();
+
+  return true;
 }
 
 int main(int argc, char *argv[]) {
-  int time_limit;
-  char name[1000];
+  // int time_limit;
+  // char name[1000];
   Digraph dg;
   DNode source, target;
   ArcValueMap car_cost(dg), drone_cost(dg);
@@ -266,12 +410,12 @@ int main(int argc, char *argv[]) {
 
   // uncomment one of these lines to change default pdf reader, or insert new
   // one
-  set_pdfreader("open"); // pdf reader for Mac OS X
+  set_pdfreader("okular"); // pdf reader for Mac OS X
   // set_pdfreader("xpdf");    // pdf reader for Linux
   // set_pdfreader("evince");  // pdf reader for Linux
 
   srand48(seed);
-  time_limit = 3600; // solution must be obtained within time_limit seconds
+  // time_limit = 3600; // solution must be obtained within time_limit seconds
   if (argc != 2) {
     cout << endl
          << "Usage: " << argv[0] << " <pli1_filename> " << endl
