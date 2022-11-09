@@ -123,6 +123,7 @@ bool Exact_Algorithm(Drone_Data &D, DNodeArcMap &car_route_predArc,
   Digraph::NodeMap<GRBVar> u(D.dg); //
 
   GRBEnv env = GRBEnv();
+  env.set(GRB_DoubleParam_TimeLimit, 300);
   GRBModel model = GRBModel(env);
   GRBLinExpr obj;
   model.set(GRB_StringAttr_ModelName, "TSP-D");
@@ -141,17 +142,25 @@ bool Exact_Algorithm(Drone_Data &D, DNodeArcMap &car_route_predArc,
   model.setObjective(obj, GRB_MINIMIZE);
   model.update();
 
-  // soma das arestas escolhidas saindo de source = 1
-  GRBLinExpr c1;
+  // Source
+  GRBLinExpr c_source_in;
+  for (InArcIt e(D.dg, D.source); e != INVALID; ++e)
+    c_source_in += x[e];
+  model.addConstr(c_source_in == 0);
+  GRBLinExpr c_source_out;
   for (OutArcIt e(D.dg, D.source); e != INVALID; ++e)
-    c1 += x[e];
-  model.addConstr(c1 == 1);
+    c_source_out += x[e];
+  model.addConstr(c_source_out == 1);
 
-  // soma das arestas escolhidas chegando em target = 1
-  GRBLinExpr c2;
+  // Target
+  GRBLinExpr c_target_in;
   for (InArcIt e(D.dg, D.target); e != INVALID; ++e)
-    c2 += x[e];
-  model.addConstr(c2 == 1);
+    c_target_in += x[e];
+  model.addConstr(c_target_in == 1);
+  GRBLinExpr c_target_out;
+  for (OutArcIt e(D.dg, D.target); e != INVALID; ++e)
+    c_target_out += x[e];
+  model.addConstr(c_target_out == 0);
 
   // manutenção de fluxo
   for (DNodeIt n(D.dg); n != INVALID; ++n) {
@@ -193,6 +202,8 @@ bool Exact_Algorithm(Drone_Data &D, DNodeArcMap &car_route_predArc,
 
   // Todos os vértices devem ser visitados ao menos uma vez
   for (DNodeIt n(D.dg); n != INVALID; ++n) {
+    if (n == D.source or n == D.target)
+      continue;
     GRBLinExpr c;
     for (InArcIt e(D.dg, n); e != INVALID; ++e)
       c += x[e] + y[e];
@@ -202,11 +213,16 @@ bool Exact_Algorithm(Drone_Data &D, DNodeArcMap &car_route_predArc,
   model.optimize();
 
   for (ArcIt e(D.dg); e != INVALID; ++e) {
-    if (x[e].get(GRB_DoubleAttr_X) > 0)
+    if (x[e].get(GRB_DoubleAttr_X) > 0) {
       car_route_predArc[D.dg.target(e)] = e;
+      cout << "C\t" << D.vname[D.dg.source(e)] << "\t-->\t"
+           << D.vname[D.dg.target(e)] << "\t" << D.car_cost[e] << endl;
+    }
     if (y[e].get(GRB_DoubleAttr_X) > 0) {
       drone_in[D.dg.target(e)] = e;
       drone_out[D.dg.source(e)] = e;
+      cout << "D\t" << D.vname[D.dg.source(e)] << "\t-->\t"
+           << D.vname[D.dg.target(e)] << "\t" << D.drone_cost[e] << endl;
     }
   }
 
@@ -243,29 +259,44 @@ bool Heuristic_Algorithm(Drone_Data &D, DNodeArcMap &car_route_predArc,
     for (ArcIt e(D.dg); e != INVALID; ++e) {
       x[e] = model.addVar(0.0, 1.0, 0.0, GRB_BINARY, "x");
       y[e] = model.addVar(0.0, 1.0, 0.0, GRB_BINARY, "y");
-      obj += x[e] * (D.car_cost[e] - mu[D.dg.source(e)]) +
-             y[e] * (D.drone_cost[e] - mu[D.dg.source(e)]);
+      obj += x[e] * D.car_cost[e] + y[e] * D.drone_cost[e];
     }
 
-    for (DNodeIt n(D.dg); n != INVALID; ++n) {
+    for (DNodeIt n(D.dg); n != INVALID; ++n)
       u[n] = model.addVar(0.0, D.nnodes, 0.0, GRB_CONTINUOUS, "u");
-      obj += mu[n];
-    }
 
+    for (DNodeIt n(D.dg); n != INVALID; ++n)
+      obj += D.drone_limit * mu[n];
+
+    // Relaxação Lagrangiana
+    for (ArcIt a(D.dg); a != INVALID; ++a)
+      for (ArcIt b(D.dg); b != INVALID; ++b)
+        if (D.dg.source(a) == D.dg.target(b) and
+            D.dg.target(a) == D.dg.source(b)) {
+          obj -= y[a] * D.drone_cost[a] - y[b] * D.drone_cost[b];
+        }
     model.setObjective(obj, GRB_MINIMIZE);
     model.update();
 
-    // soma das arestas escolhidas saindo de source = 1
-    GRBLinExpr c1;
+    // Source
+    GRBLinExpr c_source_in;
+    for (InArcIt e(D.dg, D.source); e != INVALID; ++e)
+      c_source_in += x[e];
+    model.addConstr(c_source_in == 0);
+    GRBLinExpr c_source_out;
     for (OutArcIt e(D.dg, D.source); e != INVALID; ++e)
-      c1 += x[e];
-    model.addConstr(c1 == 1);
+      c_source_out += x[e];
+    model.addConstr(c_source_out == 1);
 
-    // soma das arestas escolhidas chegando em target = 1
-    GRBLinExpr c2;
+    // Target
+    GRBLinExpr c_target_in;
     for (InArcIt e(D.dg, D.target); e != INVALID; ++e)
-      c2 += x[e];
-    model.addConstr(c2 == 1);
+      c_target_in += x[e];
+    model.addConstr(c_target_in == 1);
+    GRBLinExpr c_target_out;
+    for (OutArcIt e(D.dg, D.target); e != INVALID; ++e)
+      c_target_out += x[e];
+    model.addConstr(c_target_out == 0);
 
     // manutenção de fluxo
     for (DNodeIt n(D.dg); n != INVALID; ++n) {
@@ -292,11 +323,12 @@ bool Heuristic_Algorithm(Drone_Data &D, DNodeArcMap &car_route_predArc,
         if (D.dg.source(a) == D.dg.target(b) and
             D.dg.target(a) == D.dg.source(b)) {
           model.addConstr(y[a] == y[b]);
-          model.addConstr(y[a] * D.drone_cost[a] + y[b] * D.drone_cost[b] <=
-                          D.drone_limit);
+          // model.addConstr(y[a] * D.drone_cost[a] + y[b] * D.drone_cost[b] <=
+          // D.drone_limit);
         }
 
-    // Para todo arco do drone, deve haver um arco do caminhão que chega nele
+    // Para todo arco do drone, deve haver um arco do caminhão que chega
+    // nele
     for (ArcIt a(D.dg); a != INVALID; ++a) {
       GRBLinExpr c;
       for (InArcIt e(D.dg, D.dg.source(a)); e != INVALID; ++e)
@@ -306,16 +338,31 @@ bool Heuristic_Algorithm(Drone_Data &D, DNodeArcMap &car_route_predArc,
       model.addConstr(c >= y[a]);
     }
 
+    // Todos os vértices devem ser visitados ao menos uma vez
+    for (DNodeIt n(D.dg); n != INVALID; ++n) {
+      if (n == D.source or n == D.target)
+        continue;
+      GRBLinExpr c;
+      for (InArcIt e(D.dg, n); e != INVALID; ++e)
+        c += x[e] + y[e];
+      model.addConstr(c >= 1);
+    }
+
     model.optimize();
 
     // ============== PARADA =============================
-    if (abs(last - model.get(GRB_DoubleAttr_ObjVal)) < 0.0001 || i >= 100) {
+    if (abs(last - model.get(GRB_DoubleAttr_ObjVal)) < 0.001 || i >= 100) {
       for (ArcIt e(D.dg); e != INVALID; ++e) {
-        if (x[e].get(GRB_DoubleAttr_X) > 0)
+        if (x[e].get(GRB_DoubleAttr_X) > 0) {
           car_route_predArc[D.dg.target(e)] = e;
+          cout << "C\t" << D.vname[D.dg.source(e)] << "\t-->\t"
+               << D.vname[D.dg.target(e)] << "\t" << D.car_cost[e] << endl;
+        }
         if (y[e].get(GRB_DoubleAttr_X) > 0) {
           drone_in[D.dg.target(e)] = e;
           drone_out[D.dg.source(e)] = e;
+          cout << "D\t" << D.vname[D.dg.source(e)] << "\t-->\t"
+               << D.vname[D.dg.target(e)] << "\t" << D.drone_cost[e] << endl;
         }
       }
       return true;
@@ -325,13 +372,18 @@ bool Heuristic_Algorithm(Drone_Data &D, DNodeArcMap &car_route_predArc,
     // ============== SUBGRADIENTE =======================
     for (DNodeIt n(D.dg); n != INVALID; ++n) {
       // Calcula Ax - b
-      double viola = +1.0;
-      for (OutArcIt a(D.dg, n); a != INVALID; ++a)
-        viola -= x[a].get(GRB_DoubleAttr_X) + y[a].get(GRB_DoubleAttr_X);
+      double viola = D.drone_limit;
+      for (ArcIt a(D.dg); a != INVALID; ++a)
+        for (ArcIt b(D.dg); b != INVALID; ++b)
+          if (D.dg.source(a) == D.dg.target(b) and
+              D.dg.target(a) == D.dg.source(b) and D.dg.source(a) == n) {
+            viola -= y[a].get(GRB_DoubleAttr_X) * D.drone_cost[a] -
+                     y[b].get(GRB_DoubleAttr_X) * D.drone_cost[b];
+          }
       cout << viola << '\n';
 
       // mu_k+1 = max { u_k - PI (Ax_k - b), 0 }
-      mu[n] = mu[n] + pi(i) * viola;
+      mu[n] = mu[n] - pi(i) * viola;
       if (mu[n] < 0)
         mu[n] = 0.0;
     }
@@ -371,8 +423,6 @@ bool View_Car_Drone_Routing(Drone_Data &D, DNodeArcMap &car_route_predArc,
     Arc a = car_route_predArc[v];
     DA.SetLabel(a, D.car_cost[a]);
     DA.SetFontSize(a, 20);
-    cout << "( " << D.vname[D.dg.source(a)] << " --> "
-         << D.vname[D.dg.target(a)] << ")" << endl;
     DA.SetColor(a, "Blue");
     v = D.dg.source(car_route_predArc[v]);
   }
@@ -416,7 +466,7 @@ int main(int argc, char *argv[]) {
 
   srand48(seed);
   // time_limit = 3600; // solution must be obtained within time_limit seconds
-  if (argc != 2) {
+  if (argc != 3) {
     cout << endl
          << "Usage: " << argv[0] << " <pli1_filename> " << endl
          << endl
@@ -445,7 +495,10 @@ int main(int argc, char *argv[]) {
   DNodeArcMap car_route_predArc(D.dg);
   DNodeArcMap drone_out(D.dg), drone_in(D.dg);
 
-  Exact_Algorithm(D, car_route_predArc, drone_in, drone_out);
+  if (argv[2][0] == 'e')
+    Exact_Algorithm(D, car_route_predArc, drone_in, drone_out);
+  else
+    Heuristic_Algorithm(D, car_route_predArc, drone_in, drone_out);
 
-  View_Car_Drone_Routing(D, car_route_predArc, drone_in, drone_out);
+  // View_Car_Drone_Routing(D, car_route_predArc, drone_in, drone_out);
 }
