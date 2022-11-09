@@ -1,0 +1,122 @@
+Set parameter Username
+Academic license - for non-commercial use only - expires 2023-10-22
+Set parameter TimeLimit to value 300
+Gurobi Optimizer version 9.5.2 build v9.5.2rc0 (linux64)
+Thread count: 4 physical cores, 8 logical processors, using up to 8 threads
+Optimize a model with 1199 rows, 602 columns and 6531 nonzeros
+Model fingerprint: 0x4d4fea98
+Variable types: 50 continuous, 552 integer (552 binary)
+Coefficient statistics:
+  Matrix range     [1e+00, 2e+02]
+  Objective range  [2e+00, 8e+02]
+  Bounds range     [1e+00, 5e+01]
+  RHS range        [1e+00, 5e+01]
+Presolve removed 826 rows and 282 columns
+Presolve time: 0.02s
+Presolved: 373 rows, 320 columns, 1646 nonzeros
+Variable types: 49 continuous, 271 integer (271 binary)
+
+Root relaxation: objective 4.483810e+03, 218 iterations, 0.00 seconds (0.00 work units)
+
+    Nodes    |    Current Node    |     Objective Bounds      |     Work
+ Expl Unexpl |  Obj  Depth IntInf | Incumbent    BestBd   Gap | It/Node Time
+
+     0     0 4483.81000    0   73          - 4483.81000      -     -    0s
+     0     0 4885.74000    0   67          - 4885.74000      -     -    0s
+     0     0 4888.43333    0   72          - 4888.43333      -     -    0s
+     0     0 4988.26000    0   72          - 4988.26000      -     -    0s
+     0     0 4995.84250    0   76          - 4995.84250      -     -    0s
+     0     0 5096.58333    0   69          - 5096.58333      -     -    0s
+     0     0 5123.95833    0   75          - 5123.95833      -     -    0s
+     0     0 5123.95833    0   75          - 5123.95833      -     -    0s
+     0     0 5178.72250    0   95          - 5178.72250      -     -    0s
+     0     0 5178.84800    0   63          - 5178.84800      -     -    0s
+     0     0 5182.27250    0   97          - 5182.27250      -     -    0s
+     0     0 5183.31000    0   47          - 5183.31000      -     -    0s
+     0     0 5183.33250    0   79          - 5183.33250      -     -    0s
+     0     0 5191.25667    0   72          - 5191.25667      -     -    0s
+     0     0 5191.25667    0   72          - 5191.25667      -     -    0s
+     0     0 5196.24500    0   72          - 5196.24500      -     -    0s
+     0     0 5196.24500    0   72          - 5196.24500      -     -    0s
+     0     0 5204.39000    0   70          - 5204.39000      -     -    0s
+     0     0 5204.39000    0   70          - 5204.39000      -     -    0s
+     0     0 5211.39000    0   70          - 5211.39000      -     -    0s
+     0     0 5212.94838    0   67          - 5212.94838      -     -    0s
+     0     0 5212.94838    0   67          - 5212.94838      -     -    0s
+     0     2 5245.52500    0   67          - 5245.52500      -     -    0s
+*  494   306              27    5677.0000000 5342.93200  5.88%  15.1    0s
+*  497   306              27    5676.0000000 5342.93200  5.87%  15.0    0s
+H  647   280                    5636.0000000 5344.70400  5.17%  14.5    0s
+* 1086   410              21    5568.0000000 5353.93600  3.84%  14.0    0s
+H 1142   401                    5561.0000000 5353.93600  3.72%  13.8    0s
+H 1164   391                    5493.0000000 5402.66842  1.64%  13.5    0s
+
+Cutting planes:
+  Learned: 14
+  Gomory: 19
+  Implied bound: 8
+  MIR: 13
+  Flow cover: 27
+  Inf proof: 4
+  Zero half: 13
+  RLT: 23
+
+Explored 2068 nodes (32704 simplex iterations) in 2.02 seconds (1.03 work units)
+Thread count was 8 (of 8 available processors)
+
+Solution count 6: 5493 5561 5568 ... 5677
+
+Optimal solution found (tolerance 1.00e-04)
+Best objective 5.493000000000e+03, best bound 5.493000000000e+03, gap 0.0000%
+C	1	-->	14	146
+C	2	-->	12	122
+C	3	-->	11	219
+C	4	-->	15	185
+C	5	-->	25	341
+C	6	-->	44	87
+C	7	-->	2	75
+D	8	-->	15	2
+D	9	-->	44	5
+C	10	-->	1	50
+C	11	-->	10	157
+C	12	-->	38	39
+C	13	-->	33	43
+C	14	-->	42	235
+D	14	-->	50	5
+D	15	-->	8	2
+C	15	-->	39	35
+C	16	-->	21	184
+C	17	-->	18	72
+C	18	-->	36	41
+C	19	-->	40	201
+C	20	-->	43	188
+C	22	-->	34	128
+C	23	-->	37	102
+C	24	-->	29	111
+C	25	-->	31	290
+C	26	-->	7	63
+C	27	-->	22	149
+C	28	-->	19	101
+C	29	-->	5	106
+C	30	-->	48	136
+C	31	-->	4	85
+C	32	-->	47	88
+C	33	-->	6	54
+C	34	-->	28	22
+C	35	-->	17	62
+C	36	-->	23	197
+C	37	-->	27	88
+C	38	-->	45	74
+C	39	-->	13	274
+C	40	-->	32	179
+C	41	-->	16	165
+C	42	-->	41	105
+C	43	-->	46	57
+C	44	-->	30	35
+D	44	-->	9	5
+C	45	-->	24	47
+C	46	-->	3	105
+C	47	-->	49	44
+C	48	-->	35	88
+C	49	-->	20	93
+D	50	-->	14	6

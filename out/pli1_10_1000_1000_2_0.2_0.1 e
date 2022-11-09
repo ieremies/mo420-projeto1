@@ -1,0 +1,58 @@
+Set parameter Username
+Academic license - for non-commercial use only - expires 2023-10-22
+Set parameter TimeLimit to value 300
+Gurobi Optimizer version 9.5.2 build v9.5.2rc0 (linux64)
+Thread count: 4 physical cores, 8 logical processors, using up to 8 threads
+Optimize a model with 193 rows, 98 columns and 915 nonzeros
+Model fingerprint: 0xca653bb8
+Variable types: 10 continuous, 88 integer (88 binary)
+Coefficient statistics:
+  Matrix range     [1e+00, 9e+01]
+  Objective range  [4e+00, 9e+02]
+  Bounds range     [1e+00, 1e+01]
+  RHS range        [1e+00, 3e+01]
+Presolve removed 132 rows and 48 columns
+Presolve time: 0.01s
+Presolved: 61 rows, 50 columns, 251 nonzeros
+Variable types: 9 continuous, 41 integer (41 binary)
+Found heuristic solution: objective 3444.0000000
+Found heuristic solution: objective 2520.0000000
+
+Root relaxation: objective 1.438600e+03, 26 iterations, 0.00 seconds (0.00 work units)
+
+    Nodes    |    Current Node    |     Objective Bounds      |     Work
+ Expl Unexpl |  Obj  Depth IntInf | Incumbent    BestBd   Gap | It/Node Time
+
+     0     0 1438.60000    0    5 2520.00000 1438.60000  42.9%     -    0s
+H    0     0                    1695.0000000 1438.60000  15.1%     -    0s
+H    0     0                    1669.0000000 1438.60000  13.8%     -    0s
+H    0     0                    1661.0000000 1466.20000  11.7%     -    0s
+     0     0 1488.80000    0   10 1661.00000 1488.80000  10.4%     -    0s
+H    0     0                    1559.0000000 1488.80000  4.50%     -    0s
+
+Cutting planes:
+  Gomory: 3
+  Implied bound: 2
+  MIR: 11
+  Zero half: 1
+  RLT: 4
+  Relax-and-lift: 1
+
+Explored 1 nodes (36 simplex iterations) in 0.03 seconds (0.00 work units)
+Thread count was 8 (of 8 available processors)
+
+Solution count 6: 1559 1661 1669 ... 3444
+
+Optimal solution found (tolerance 1.00e-04)
+Best objective 1.559000000000e+03, best bound 1.559000000000e+03, gap 0.0000%
+D	2	-->	7	7
+C	2	-->	4	196
+C	3	-->	10	330
+D	4	-->	8	17
+C	4	-->	3	349
+C	5	-->	2	168
+C	6	-->	9	87
+D	7	-->	2	10
+D	8	-->	4	17
+C	9	-->	5	331
+C	10	-->	1	47

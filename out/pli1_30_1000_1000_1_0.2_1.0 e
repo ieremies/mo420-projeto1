@@ -1,0 +1,70 @@
+Set parameter Username
+Academic license - for non-commercial use only - expires 2023-10-22
+Set parameter TimeLimit to value 300
+Gurobi Optimizer version 9.5.2 build v9.5.2rc0 (linux64)
+Thread count: 4 physical cores, 8 logical processors, using up to 8 threads
+Optimize a model with 663 rows, 334 columns and 3443 nonzeros
+Model fingerprint: 0x584942d4
+Variable types: 30 continuous, 304 integer (304 binary)
+Coefficient statistics:
+  Matrix range     [1e+00, 5e+02]
+  Objective range  [2e+01, 6e+02]
+  Bounds range     [1e+00, 3e+01]
+  RHS range        [1e+00, 3e+02]
+Presolve removed 440 rows and 139 columns
+Presolve time: 0.02s
+Presolved: 223 rows, 195 columns, 1125 nonzeros
+Variable types: 28 continuous, 167 integer (167 binary)
+
+Root relaxation: objective 4.113900e+03, 95 iterations, 0.00 seconds (0.00 work units)
+
+    Nodes    |    Current Node    |     Objective Bounds      |     Work
+ Expl Unexpl |  Obj  Depth IntInf | Incumbent    BestBd   Gap | It/Node Time
+
+     0     0 4113.90000    0   22          - 4113.90000      -     -    0s
+     0     0 4408.70000    0   41          - 4408.70000      -     -    0s
+     0     0 4422.76000    0   40          - 4422.76000      -     -    0s
+     0     0 4436.49167    0   44          - 4436.49167      -     -    0s
+     0     0 4519.00000    0   36          - 4519.00000      -     -    0s
+     0     0 4523.00000    0   51          - 4523.00000      -     -    0s
+     0     0 4524.16667    0   52          - 4524.16667      -     -    0s
+H    0     0                    4596.0000000 4524.16667  1.56%     -    0s
+     0     0 4561.83333    0   59 4596.00000 4561.83333  0.74%     -    0s
+     0     0 infeasible    0      4596.00000 4596.00000  0.00%     -    0s
+
+Explored 1 nodes (371 simplex iterations) in 0.15 seconds (0.02 work units)
+Thread count was 8 (of 8 available processors)
+
+Solution count 1: 4596 
+
+Optimal solution found (tolerance 1.00e-04)
+Best objective 4.596000000000e+03, best bound 4.596000000000e+03, gap 0.0000%
+C	1	-->	12	135
+C	3	-->	7	403
+C	4	-->	25	145
+C	5	-->	2	104
+C	6	-->	28	27
+C	7	-->	1	388
+C	8	-->	17	114
+C	9	-->	11	37
+C	10	-->	26	148
+C	11	-->	16	71
+C	12	-->	19	236
+C	13	-->	30	86
+C	14	-->	13	208
+C	15	-->	23	372
+C	16	-->	5	127
+C	17	-->	10	225
+C	18	-->	4	124
+C	19	-->	20	216
+C	20	-->	6	96
+C	21	-->	22	119
+C	22	-->	29	221
+C	23	-->	24	165
+C	24	-->	27	128
+C	25	-->	15	97
+C	26	-->	3	177
+C	27	-->	14	118
+C	28	-->	21	72
+C	29	-->	9	129
+C	30	-->	8	108

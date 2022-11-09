@@ -1,0 +1,68 @@
+Set parameter Username
+Academic license - for non-commercial use only - expires 2023-10-22
+Set parameter TimeLimit to value 300
+Gurobi Optimizer version 9.5.2 build v9.5.2rc0 (linux64)
+Thread count: 4 physical cores, 8 logical processors, using up to 8 threads
+Optimize a model with 185 rows, 94 columns and 845 nonzeros
+Model fingerprint: 0x5ddb3249
+Variable types: 10 continuous, 84 integer (84 binary)
+Coefficient statistics:
+  Matrix range     [1e+00, 3e+02]
+  Objective range  [2e+01, 1e+03]
+  Bounds range     [1e+00, 1e+01]
+  RHS range        [1e+00, 3e+02]
+Found heuristic solution: objective 4765.0000000
+Presolve removed 116 rows and 34 columns
+Presolve time: 0.01s
+Presolved: 69 rows, 60 columns, 360 nonzeros
+Found heuristic solution: objective 4016.0000000
+Variable types: 9 continuous, 51 integer (51 binary)
+Found heuristic solution: objective 4003.0000000
+
+Root relaxation: objective 1.452300e+03, 24 iterations, 0.00 seconds (0.00 work units)
+
+    Nodes    |    Current Node    |     Objective Bounds      |     Work
+ Expl Unexpl |  Obj  Depth IntInf | Incumbent    BestBd   Gap | It/Node Time
+
+     0     0 1452.30000    0   15 4003.00000 1452.30000  63.7%     -    0s
+H    0     0                    3229.0000000 1452.30000  55.0%     -    0s
+H    0     0                    2824.0000000 1452.30000  48.6%     -    0s
+     0     0 1611.40000    0   19 2824.00000 1611.40000  42.9%     -    0s
+H    0     0                    2217.0000000 1611.40000  27.3%     -    0s
+H    0     0                    2043.0000000 1615.15183  20.9%     -    0s
+     0     0 1615.15183    0   21 2043.00000 1615.15183  20.9%     -    0s
+     0     0 1774.63265    0   22 2043.00000 1774.63265  13.1%     -    0s
+     0     0 1809.66667    0   23 2043.00000 1809.66667  11.4%     -    0s
+     0     0 1811.00000    0   23 2043.00000 1811.00000  11.4%     -    0s
+     0     0 1822.00000    0   25 2043.00000 1822.00000  10.8%     -    0s
+     0     0 1853.00000    0   22 2043.00000 1853.00000  9.30%     -    0s
+     0     0 1870.00000    0   25 2043.00000 1870.00000  8.47%     -    0s
+
+Cutting planes:
+  Gomory: 3
+  Implied bound: 9
+  MIR: 12
+  Inf proof: 1
+  Zero half: 8
+  RLT: 10
+
+Explored 1 nodes (114 simplex iterations) in 0.04 seconds (0.01 work units)
+Thread count was 8 (of 8 available processors)
+
+Solution count 7: 2043 2217 2824 ... 4765
+
+Optimal solution found (tolerance 1.00e-04)
+Best objective 2.043000000000e+03, best bound 2.043000000000e+03, gap 0.0000%
+C	1	-->	6	292
+D	2	-->	5	24
+D	3	-->	9	52
+D	4	-->	6	116
+C	5	-->	10	213
+D	5	-->	2	19
+D	6	-->	4	102
+C	6	-->	5	428
+D	8	-->	10	40
+C	9	-->	7	439
+D	9	-->	3	60
+C	10	-->	9	225
+D	10	-->	8	33
