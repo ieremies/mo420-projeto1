@@ -229,7 +229,7 @@ bool Exact_Algorithm(Drone_Data &D, DNodeArcMap &car_route_predArc,
   return true;
 }
 
-double pi(int i) { return 168 / (i + 1); }
+double pi(int i) { return 16800 / (i + 1); }
 
 // Faca uma heuristica, trocando a construcao fake por uma heuristica
 bool Heuristic_Algorithm(Drone_Data &D, DNodeArcMap &car_route_predArc,
@@ -268,13 +268,23 @@ bool Heuristic_Algorithm(Drone_Data &D, DNodeArcMap &car_route_predArc,
     for (DNodeIt n(D.dg); n != INVALID; ++n)
       obj += D.drone_limit * mu[n];
 
-    // Relaxação Lagrangiana
-    for (ArcIt a(D.dg); a != INVALID; ++a)
-      for (ArcIt b(D.dg); b != INVALID; ++b)
-        if (D.dg.source(a) == D.dg.target(b) and
-            D.dg.target(a) == D.dg.source(b)) {
-          obj -= y[a] * D.drone_cost[a] - y[b] * D.drone_cost[b];
-        }
+    // Relaxação Lagrangiana da restrição de distância do drone
+    // for (ArcIt a(D.dg); a != INVALID; ++a)
+    //   for (ArcIt b(D.dg); b != INVALID; ++b)
+    //     if (D.dg.source(a) == D.dg.target(b) and
+    //         D.dg.target(a) == D.dg.source(b)) {
+    //       obj -= y[a] * D.drone_cost[a] - y[b] * D.drone_cost[b];
+    //     }
+
+    // Relaxação Lagrangiana da restrição de visitação
+    for (DNodeIt n(D.dg); n != INVALID; ++n) {
+      if (n == D.source or n == D.target)
+        continue;
+      for (OutArcIt e(D.dg, n); e != INVALID; ++e)
+        obj += x[e] + y[e];
+      obj -= mu[n];
+    }
+
     model.setObjective(obj, GRB_MINIMIZE);
     model.update();
 
@@ -323,8 +333,8 @@ bool Heuristic_Algorithm(Drone_Data &D, DNodeArcMap &car_route_predArc,
         if (D.dg.source(a) == D.dg.target(b) and
             D.dg.target(a) == D.dg.source(b)) {
           model.addConstr(y[a] == y[b]);
-          // model.addConstr(y[a] * D.drone_cost[a] + y[b] * D.drone_cost[b] <=
-          // D.drone_limit);
+          model.addConstr(y[a] * D.drone_cost[a] + y[b] * D.drone_cost[b] <=
+                          D.drone_limit);
         }
 
     // Para todo arco do drone, deve haver um arco do caminhão que chega
@@ -339,14 +349,14 @@ bool Heuristic_Algorithm(Drone_Data &D, DNodeArcMap &car_route_predArc,
     }
 
     // Todos os vértices devem ser visitados ao menos uma vez
-    for (DNodeIt n(D.dg); n != INVALID; ++n) {
-      if (n == D.source or n == D.target)
-        continue;
-      GRBLinExpr c;
-      for (InArcIt e(D.dg, n); e != INVALID; ++e)
-        c += x[e] + y[e];
-      model.addConstr(c >= 1);
-    }
+    // for (DNodeIt n(D.dg); n != INVALID; ++n) {
+    //   if (n == D.source or n == D.target)
+    //     continue;
+    //   GRBLinExpr c;
+    //   for (InArcIt e(D.dg, n); e != INVALID; ++e)
+    //     c += x[e] + y[e];
+    //   model.addConstr(c >= 1);
+    // }
 
     model.optimize();
 
@@ -372,20 +382,20 @@ bool Heuristic_Algorithm(Drone_Data &D, DNodeArcMap &car_route_predArc,
     // ============== SUBGRADIENTE =======================
     for (DNodeIt n(D.dg); n != INVALID; ++n) {
       // Calcula Ax - b
-      double viola = D.drone_limit;
-      for (ArcIt a(D.dg); a != INVALID; ++a)
-        for (ArcIt b(D.dg); b != INVALID; ++b)
-          if (D.dg.source(a) == D.dg.target(b) and
-              D.dg.target(a) == D.dg.source(b) and D.dg.source(a) == n) {
-            viola -= y[a].get(GRB_DoubleAttr_X) * D.drone_cost[a] -
-                     y[b].get(GRB_DoubleAttr_X) * D.drone_cost[b];
-          }
-      cout << viola << '\n';
+      double viola = -1;
+      if (n == D.source or n == D.target)
+        continue;
+      for (OutArcIt e(D.dg, n); e != INVALID; ++e)
+        viola += x[e].get(GRB_DoubleAttr_X) + y[e].get(GRB_DoubleAttr_X);
 
-      // mu_k+1 = max { u_k - PI (Ax_k - b), 0 }
-      mu[n] = mu[n] - pi(i) * viola;
+      if (viola < 0)
+        mu[n] += pi(i);
+      else
+        mu[n] -= pi(i);
       if (mu[n] < 0)
         mu[n] = 0.0;
+
+      cout << mu[n] << endl;
     }
   }
 
