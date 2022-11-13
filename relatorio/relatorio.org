@@ -30,7 +30,7 @@ Além disso, usaremos as variáveis $u_i$ para atribuir um peso ao nó $i$ para 
 &                 &&       & a_i &\in \mathbb{R}_+                                             &         & \forall i \in V
 \end{alignat}
 
-Nossa função objetivo é bem direta: soma dos custos do caminhão e do drone. Restrição $2$ e $3$ garantem que o caminhão irá partir de $s$ e chegar em $t$. Restrição $4$ garante a manutenção de fluxo enquanto restrição $5$ evita ciclos. Restrição $6$ garante que toda viagem do drone irá voltar para o nó que partiu e restrição $7$ garante que ele só partirá de um nó visitado pelo caminhão. Restrição $8$ garante que todos os nós serão visitados, ou pelo caminhão ou pelo drone. Restrição $9$ força que as viagens do drone respeitem seu limite de distância. Por fim, restrições $10$ e $11$ definem o domínio das variáveis.
+Nossa função objetivo é bem direta: soma dos custos do caminhão e do drone. Restrição $2$ e $3$ garantem que o caminhão irá partir de $s$ e chegar em $t$. Restrição $4$ garante a manutenção de fluxo enquanto restrição $5$ evita ciclos. Restrição $6$ garante que toda viagem do drone irá voltar para o nó que partiu e restrição $7$ garante que ele só partirá de um nó visitado pelo caminhão. Restrição $8$ garante que todos os nós serão visitados, ou pelo caminhão, ou pelo drone. Restrição $9$ força que as viagens do drone respeitem seu limite de distância. Por fim, restrições $10$ e $11$ definem o domínio das variáveis.
 
 # A partir de uma solução do programa acima, mostrar que é uma solução do problema
 Suponha uma solução $(x,y)$ do programa linear inteiro acima. Diremos que $P = (V_P, A_P)$, tal que $A_P$ é composto dos arcos cujo $x_{ij}$ é igual a $1$ e $V_P$ os nós incidentes dos ditos arcos (incluindo $s$ e $t$). Pelas restrições $2 - 5$, esse é um conjunto de arcos sem ciclos que partem de $s$ e terminam em $t$, compondo assim um caminho de $s$ a $t$.
@@ -57,14 +57,14 @@ Utilizando a ideia de *relaxação lagrangiana*, iremos introduzir tal restriç�
 
 A ideia é que, sendo $\mu_i \geq 0$, quando a restrição $8$ for violada, a função objetivo irá aumentar, causando assim um incentivo (proporcional a $\mu_i$) à relaxação satisfazê-la. Assim, nosso objetivo é encontrar um bom valor para $\mu_i$.
 
-Para tal, utilizamos o *método do subgradientes*. Assim, iniciamos nosso gradiente como $\mu_i^0 = 0$ para todo $i \in V$ e, a cada iteração, atualizamos $\mu_i^{k+1} = max\{\mu_i^k + \pi_k(1 - \sum_{j \in V, j \neq i} x_{ij} + y_{ij}) ,0\}$. Assim, a cada iteração, tomamos um passo na direção oposta ao subgradiente da restrição dualizada. A dificuldade recai em determinar o tamanho do passo $\pi_k$.
+Para tal, utilizamos o *método do subgradientes*. Assim, iniciamos nosso gradiente como $\mu_i^0 = 0$ para todo $i \in V$ e, a cada iteração, atualizamos $\mu_i^{k+1} = max\{\mu_i^k + \pi_k(1 - \sum_{j \in V, j \neq i} x_{ij} + y_{ij}) ,0\}$. Dessa forma, a cada iteração, tomamos um passo na direção oposta ao subgradiente da restrição dualizada. A dificuldade recai em determinar o tamanho do passo $\pi_k$.
 
 * Resultados
-Para esse projeto, foram utilizadas as instâncias disponibilizadas pelo professor. Os experimentos foram realizados num LG Gram equipado com um Intel Core i5 de 8ª geração, quad-core, 1.6GHz, 8GB de memória ram. A máquina estava equipada com Linux Manjaro e foi utilizado o solver Gurobi versão 9.5.2.
+Para esse projeto, foram utilizadas as instâncias disponibilizadas pelo professor. Os experimentos foram realizados num LG Gram equipado com um Intel Core i5 de 8ª geração, quad-core, 1.6GHz, 8GB de memória ram. A máquina estava equipada com Linux Manjaro e sendo utilizado o solver Gurobi versão 9.5.2.
 
 Nas tabelas abaixo encontram-se os resultados do experimento. A coluna número de nós se refere a quantidade de nós visitados na árvore de branch-and-bound. Utilizamos como tempo limite $300$ segundos.
 
-Percebemos que o modelo conseguiu resolver muito bem instâncias com menos de $30$ vértices, razoavelmente a maioria das instância entre $50$ e $100$ mas falhou em achar qualquer solução para insâncias maiores que $500$ vértices.
+Percebemos que o modelo conseguiu resolver muito bem instâncias com menos de $30$ vértices, razoavelmente a maioria das instâncias entre $50$ e $100$, mas falhou em achar qualquer solução para instâncias maiores que $500$ vértices.
 
 
 \appendix
