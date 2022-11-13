@@ -206,7 +206,7 @@ bool Exact_Algorithm(Drone_Data &D, DNodeArcMap &car_route_predArc,
       continue;
     GRBLinExpr c;
     for (InArcIt e(D.dg, n); e != INVALID; ++e)
-      c += x[e] + y[e];
+      c += x[e] + y[e]; // TODO eu acho que não precisa de x[e]
     model.addConstr(c >= 1);
   }
 
