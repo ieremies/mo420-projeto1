@@ -1,0 +1,244 @@
+% Created 2022-11-12 sáb 22:34
+% Intended LaTeX compiler: pdflatex
+\documentclass[11pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{graphicx}
+\usepackage{longtable}
+\usepackage{wrapfig}
+\usepackage{rotating}
+\usepackage[normalem]{ulem}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{capt-of}
+\usepackage{hyperref}
+\usepackage{todonotes}
+\usepackage[portuges]{babel}
+\usepackage{amsthm}
+\usepackage[a4paper, total={6in, 8in}]{geometry}
+\author{Ieremies V. F. Romero}
+\date{\today}
+\title{Projeto 1 - MO420}
+\hypersetup{
+ pdfauthor={Ieremies V. F. Romero},
+ pdftitle={Projeto 1 - MO420},
+ pdfkeywords={},
+ pdfsubject={},
+ pdfcreator={Emacs 28.2 (Org mode 9.6)}, 
+ pdflang={Portuges}}
+\usepackage{biblatex}
+\addbibresource{~/arq/bib.bib}
+\begin{document}
+
+\maketitle
+
+\section{Problema}
+\label{sec:org4abcc98}
+Neste projeto, estudaremos o problema conhecido como \emph{Travelling Sales Man with Drone} (TSP-D). Assim como no TSP clássico, temos um digrafo \(G = (V,A)\) e queremos visitar todos os nós. Porém, neste caso, dispomos de um caminhão e um drone que pode auxiliar nas visitas. O drone deve partir e voltar para o caminhão após cada visita e esta deve respeitar o limite de distância \(D\) do drone. O caminhão parte do nó \(s\) e deve terminar, com o drone, no nó \(t\). Nosso objetivo é minimizar a soma dos custos do caminhão (\(c_{ij}\)) e do drone (\(d_{ij}\)).
+
+Assim, uma solução para o problema é composta de um caminho de \(s\) a \(t\) descrito por \(P = (V_P, A_P)\) e de um conjunto de arcos \(B\). \(V_P \subseteq V\) é o conjunto de nós do caminho \(P\) e \(A_P \subseteq A\) o conjunto de arcos que o compõe. Já o conjunto \(B \subseteq V \setminus V_p \times V_P\) é um conjunto que se \((i,j) \in B\), então \((i,j) \notin A_P\) (e \((j,i) \notin A\)) e \(d_{ij} + d_{ji} \leq D\). Além disso, para cada nó \(i \in V \setminus V_P\) há exatamente um par \((i,j) \in B\), para algum \(j \in V_P\).
+
+\section{Formulação Inteira}
+\label{sec:org878abad}
+Seja \(V' = V \setminus \{s,t\}\). Usaremos \(2\) variáveis binárias:
+\begin{itemize}
+\item \(x_{ij}\) é igual a \(1\) se, e somente se, o caminhão percorre a aresta \((i,j) \in A\).
+\item \(y_{ij}\) é igual a \(1\) se, e somente se, o drone percorre a aresta \((i,j) \in A\).
+\end{itemize}
+
+Além disso, usaremos as variáveis \(u_i\) para atribuir um peso ao nó \(i\) para evitar ciclos do caminhão.
+
+\begin{alignat}{4}
+& \omit\rlap{minimize  $\displaystyle \sum_{i \in V} \sum_{j \in V ,j \neq i} x_{ij} c_{ij} + y_{ij} d_{ij} $} \\
+& \mbox{sujeito a}&& \quad & \sum_{i \in V'} x_{si} &= \sum_{i \in V'} x_{it} = 1                 & \quad &  \\
+&                 &&       &  \sum_{i \in V'} x_{is} &= \sum_{i \in V'} x_{ti} = 0                 & \quad &  \\
+&                 &&       & \sum_{j \in V', j \neq i} x_{ji} &= \sum_{j \in V', j \neq i} x_{ij}     &       & \forall i \in V'   \\
+&                 &&       & a_i + c_{ij} &\leq a_j + M(1 - x_{ij})                             &       & \forall i,j \in V \\
+&                 &&       & y_{ij} &= y_{ji}                                                   &       & \forall i,j \in V   \\
+&                 &&       & \sum_{k \in V', k \neq i} x_{ki} &\geq y_{ij}                                &       & \forall i,j \in V' \\
+&                 &&       & \sum_{j \in V, j \neq i} x_{ij} + y_{ij} &\geq 1                        &       & \forall i \in V   \\
+&                 &&       & y_{ij} c_{ij} + y_{ji} c_{ji} &\leq D                               &       & \forall i,j \in V  \\
+&                 &&       & x_{ij} y_{ij} &\in \{0,1\}                                         &       & \forall i,j \in V \\
+&                 &&       & a_i &\in \mathbb{R}_+                                             &         & \forall i \in V
+\end{alignat}
+
+Nossa função objetivo é bem direta: soma dos custos do caminhão e do drone. Restrição \(2\) e \(3\) garantem que o caminhão irá partir de \(s\) e chegar em \(t\). Restrição \(4\) garante a manutenção de fluxo enquanto restrição \(5\) evita ciclos. Restrição \(6\) garante que toda viagem do drone irá voltar para o nó que partiu e restrição \(7\) garante que ele só partirá de um nó visitado pelo caminhão. Restrição \(8\) garante que todos os nós serão visitados, ou pelo caminhão ou pelo drone. Restrição \(9\) força que as viagens do drone respeitem seu limite de distância. Por fim, restrições \(10\) e \(11\) definem o domínio das variáveis.
+
+Suponha uma solução \((x,y)\) do programa linear inteiro acima. Diremos que \(P = (V_P, A_P)\), tal que \(A_P\) é composto dos arcos cujo \(x_{ij}\) é igual a \(1\) e \(V_P\) os nós incidentes dos ditos arcos (incluindo \(s\) e \(t\)). Pelas restrições \(2 - 5\), esse é um conjunto de arcos sem ciclos que partem de \(s\) e terminam em \(t\), compondo assim um caminho de \(s\) a \(t\).
+
+Seja \(B\) o conjunto de arcos tal que \(y_{ij}\) é igual a \(1\). Pela restrição \(8\), todo nó \(i\) que não possua uma aresta do caminhão partindo dele, ou seja, que não está em \(V_P\), tem ao menos uma aresta \((i,j)\) em \(B\). Pelas restrições \(6\) e \(7\), tal \(j\) faz parte do caminho do caminhão. É importante notar que, no ótimo, tendo em vista que os custos dos arcos são positivos, um nó (não visitado pelo caminhão) não será visitado mais de uma vez pelo drone. Por fim, pela restrição \(9\), \(d_{ij} + d_{ji} \leq D\). Assim, qualquer solução para o programa linear será uma solução para o problema
+
+Suponha uma solução \((P,B)\) e \(P = (V_P, A_P)\) do problema proposto. Para toda aresta \((i,j)\) em \(A_P\), \(x_{ij} = 1\), ou zero, caso contrário. Como \(P\) descreve um caminho de \(s\) a \(t\), restrições \(2-5\) são atendidas. Da forma como \(B\) é construído, restrição \(6\) é atendida. Como todo nó \(i\) não visitado pelo caminho possui uma aresta \((i,j)\) partindo dele em \(B\), onde \(j\) pertence ao caminho, restrições \(7\) e \(8\) são satisfeitas. Por fim, também direitamente pela forma como foi construído, os arcos em \(B\) respeitam a restrição \(9\). Assim, qualquer solução para o problema também é uma solução para o programa linear acima.
+
+Portanto, pelos argumentos apresentados acima e pelo fato das funções objetivo e custo serem as mesmas, dizemos que esta formulação de PLI formula o problema proposto.
+
+\section{Relaxação Lagrangiana}
+\label{sec:orge6c5754}
+Rescrevendo restrição \(8\) da formulação da seção anterior, temos:
+$$
+1 - \sum_{j \in V, j \neq i} x_{ij} + y_{ij} \leq 0 \quad \forall i \in V
+$$
+
+Utilizando a ideia de \textbf{relaxação lagrangiana}, iremos introduzir tal restrição na função objetivo usando coeficientes de lagrange \(\mu_i\) para cada nó \(i \in V\), o que nos deixa com o PLI:
+
+\begin{align*}
+& \omit\rlap{minimize  $\displaystyle \sum_{i \in V} \sum_{j \in V, j \neq i} x_{ij} c_{ij} + y_{ij} d_{ij} + \sum_{i \in V} \mu_i (1 - \sum_{j \in V, j \neq i} x_{ij} + y_{ij}) } $ \\
+& \mbox{sujeito às retrições 2-7, 9-11} & \quad & &
+\end{align*}
+
+A ideia é que, sendo \(\mu_i \geq 0\), quando a restrição \(8\) for violada, a função objetivo irá aumentar, causando assim um incentivo (proporcional a \(\mu_i\)) à relaxação satisfazê-la. Assim, nosso objetivo é encontrar um bom valor para \(\mu_i\).
+
+Para tal, utilizamos o \textbf{método do subgradientes}. Assim, iniciamos nosso gradiente como \(\mu_i^0 = 0\) para todo \(i \in V\) e, a cada iteração, atualizamos \(\mu_i^{k+1} = max\{\mu_i^k + \pi_k(1 - \sum_{j \in V, j \neq i} x_{ij} + y_{ij}) ,0\}\). Assim, a cada iteração, tomamos um passo na direção oposta ao subgradiente da restrição dualizada. A dificuldade recai em determinar o tamanho do passo \(\pi_k\).
+
+\section{Resultados}
+\label{sec:org6185fbd}
+Para esse projeto, foram utilizadas as instâncias disponibilizadas pelo professor. Os experimentos foram realizados num LG Gram equipado com um Intel Core i5 de 8ª geração, quad-core, 1.6GHz, 8GB de memória ram. A máquina estava equipada com Linux Manjaro e foi utilizado o solver Gurobi versão 9.5.2.
+
+Nas tabelas abaixo encontram-se os resultados do experimento. A coluna número de nós se refere a quantidade de nós visitados na árvore de branch-and-bound. Utilizamos como tempo limite \(300\) segundos.
+
+Percebemos que o modelo conseguiu resolver muito bem instâncias com menos de \(30\) vértices, razoavelmente a maioria das instância entre \(50\) e \(100\) mas falhou em achar qualquer solução para insâncias maiores que \(500\) vértices.
+
+
+\appendix
+\begin{center}
+\begin{tabular}{llllll}
+Instância & Nº de nós & Tempo (s) & Objetivo & Limitante & GAP\\\empty
+\hline
+\(10-1000-1000-2-0.2-1.0\) & \(1\) & \(0.04\) & \(1695.0\) & \(1695.0\) & \(0.0000\%\)\\\empty
+\(10-1000-1000-4-0.2-0.5\) & \(82\) & \(0.11\) & \(2217.0\) & \(2217.0\) & \(0.0000\%\)\\\empty
+\(10-1000-1000-5-0.2-0.25\) & \(1\) & \(0.01\) & \(2036.0\) & \(2036.0\) & \(0.0000\%\)\\\empty
+\(10-1000-1000-2-0.2-0.5\) & \(1\) & \(0.03\) & \(1695.0\) & \(1695.0\) & \(0.0000\%\)\\\empty
+\(10-1000-1000-1-0.2-0.5\) & \(77\) & \(0.04\) & \(2468.0\) & \(2468.0\) & \(0.0000\%\)\\\empty
+\(10-1000-1000-3-0.2-1.0\) & \(1\) & \(0.01\) & \(2805.0\) & \(2805.0\) & \(0.0000\%\)\\\empty
+\(10-1000-1000-3-0.2-0.1\) & \(1\) & \(0.02\) & \(2447.0\) & \(2447.0\) & \(0.0000\%\)\\\empty
+\(10-1000-1000-3-0.2-0.25\) & \(1\) & \(0.01\) & \(2607.0\) & \(2607.0\) & \(0.0000\%\)\\\empty
+\(10-1000-1000-5-0.2-1.0\) & \(1\) & \(0.02\) & \(2205.0\) & \(2205.0\) & \(0.0000\%\)\\\empty
+\(10-1000-1000-5-0.2-0.1\) & \(1\) & \(0.01\) & \(1953.0\) & \(1953.0\) & \(0.0000\%\)\\\empty
+\(10-1000-1000-5-0.2-0.5\) & \(1\) & \(0.04\) & \(2173.0\) & \(2173.0\) & \(0.0000\%\)\\\empty
+\(10-1000-1000-4-0.2-1.0\) & \(122\) & \(0.07\) & \(2582.0\) & \(2582.0\) & \(0.0000\%\)\\\empty
+\(10-1000-1000-1-0.2-1.0\) & \(1\) & \(0.02\) & \(2818.0\) & \(2818.0\) & \(0.0000\%\)\\\empty
+\(10-1000-1000-4-0.2-0.1\) & \(1\) & \(0.04\) & \(1441.0\) & \(1441.0\) & \(0.0000\%\)\\\empty
+\(10-1000-1000-1-0.2-0.1\) & \(1\) & \(0.04\) & \(1777.0\) & \(1777.0\) & \(0.0000\%\)\\\empty
+\(10-1000-1000-3-0.2-0.5\) & \(1\) & \(0.03\) & \(2719.0\) & \(2719.0\) & \(0.0000\%\)\\\empty
+\(10-1000-1000-2-0.2-0.25\) & \(1\) & \(0.02\) & \(1632.0\) & \(1632.0\) & \(0.0000\%\)\\\empty
+\(10-1000-1000-4-0.2-0.25\) & \(79\) & \(0.07\) & \(1854.0\) & \(1854.0\) & \(0.0000\%\)\\\empty
+\(10-1000-1000-1-0.2-0.25\) & \(1\) & \(0.04\) & \(2043.0\) & \(2043.0\) & \(0.0000\%\)\\\empty
+\(10-1000-1000-2-0.2-0.1\) & \(1\) & \(0.03\) & \(1559.0\) & \(1559.0\) & \(0.0000\%\)\\\empty
+\(30-1000-1000-5-0.2-0.5\) & \(1249\) & \(0.39\) & \(4652.0\) & \(4652.0\) & \(0.0000\%\)\\\empty
+\(30-1000-1000-2-0.2-0.5\) & \(4842\) & \(2.96\) & \(4201.0\) & \(4201.0\) & \(0.0000\%\)\\\empty
+\(30-1000-1000-5-0.2-1.0\) & \(1249\) & \(0.29\) & \(4652.0\) & \(4652.0\) & \(0.0000\%\)\\\empty
+\(30-1000-1000-4-0.2-1.0\) & \(4403\) & \(1.48\) & \(4354.0\) & \(4354.0\) & \(0.0000\%\)\\\empty
+\(30-1000-1000-3-0.2-0.5\) & \(1\) & \(0.22\) & \(4077.0\) & \(4077.0\) & \(0.0000\%\)\\\empty
+\(30-1000-1000-1-0.2-0.1\) & \(612\) & \(0.27\) & \(3952.0\) & \(3952.0\) & \(0.0000\%\)\\\empty
+\(30-1000-1000-2-0.2-0.25\) & \(8993\) & \(5.52\) & \(3635.0\) & \(3635.0\) & \(0.0000\%\)\\\empty
+\(30-1000-1000-1-0.2-0.25\) & \(1143\) & \(0.34\) & \(4239.0\) & \(4239.0\) & \(0.0000\%\)\\\empty
+\(30-1000-1000-5-0.2-0.1\) & \(1249\) & \(0.32\) & \(4652.0\) & \(4652.0\) & \(0.0000\%\)\\\empty
+\(30-1000-1000-3-0.2-0.1\) & \(851\) & \(0.23\) & \(3853.0\) & \(3853.0\) & \(0.0000\%\)\\\empty
+\(30-1000-1000-4-0.2-0.5\) & \(6010\) & \(1.79\) & \(4212.0\) & \(4212.0\) & \(0.0000\%\)\\\empty
+\(30-1000-1000-2-0.2-1.0\) & \(190\) & \(0.24\) & \(4418.0\) & \(4418.0\) & \(0.0000\%\)\\\empty
+\(30-1000-1000-2-0.2-0.1\) & \(4515\) & \(2.95\) & \(3086.0\) & \(3086.0\) & \(0.0000\%\)\\\empty
+\(30-1000-1000-4-0.2-0.25\) & \(8640\) & \(3.17\) & \(3935.0\) & \(3935.0\) & \(0.0000\%\)\\\empty
+\(30-1000-1000-1-0.2-0.5\) & \(1914\) & \(0.40\) & \(4514.0\) & \(4514.0\) & \(0.0000\%\)\\\empty
+\(30-1000-1000-5-0.2-0.25\) & \(1249\) & \(0.36\) & \(4652.0\) & \(4652.0\) & \(0.0000\%\)\\\empty
+\(30-1000-1000-3-0.2-1.0\) & \(87\) & \(0.17\) & \(4210.0\) & \(4210.0\) & \(0.0000\%\)\\\empty
+\(30-1000-1000-4-0.2-0.1\) & \(5657\) & \(2.11\) & \(3702.0\) & \(3702.0\) & \(0.0000\%\)\\\empty
+\(30-1000-1000-3-0.2-0.25\) & \(191\) & \(0.22\) & \(3948.0\) & \(3948.0\) & \(0.0000\%\)\\\empty
+\(30-1000-1000-1-0.2-1.0\) & \(1\) & \(0.15\) & \(4596.0\) & \(4596.0\) & \(0.0000\%\)\\\empty
+\end{tabular}
+\end{center}
+
+
+\begin{center}
+\begin{tabular}{llllll}
+Instância & Nº de nós & Tempo (s) & Objetivo & Limitante & GAP\\\empty
+\hline
+\(50-1000-1000-3-0.2-0.25\) & \(60061\) & \(300.00\) & \(4331.0\) & \(3914.0\) & \(9.6283\%\)\\\empty
+\(50-1000-1000-4-0.2-0.1\) & \(33752\) & \(73.74\) & \(3292.0\) & \(3292.0\) & \(0.0000\%\)\\\empty
+\(50-1000-1000-2-0.2-0.25\) & \(2068\) & \(2.02\) & \(5493.0\) & \(5493.0\) & \(0.0000\%\)\\\empty
+\(50-1000-1000-1-0.2-1.0\) & \(1200\) & \(1.18\) & \(5548.0\) & \(5548.0\) & \(0.0000\%\)\\\empty
+\(50-1000-1000-2-0.2-1.0\) & \(2849\) & \(2.21\) & \(5500.0\) & \(5500.0\) & \(0.0000\%\)\\\empty
+\(50-1000-1000-4-0.2-1.0\) & \(8976\) & \(4.80\) & \(5733.0\) & \(5733.0\) & \(0.0000\%\)\\\empty
+\(50-1000-1000-2-0.2-0.5\) & \(4251\) & \(2.41\) & \(5500.0\) & \(5500.0\) & \(0.0000\%\)\\\empty
+\(50-1000-1000-3-0.2-0.5\) & \(43682\) & \(121.19\) & \(5077.0\) & \(5077.0\) & \(0.0000\%\)\\\empty
+\(50-1000-1000-4-0.2-0.25\) & \(64511\) & \(150.57\) & \(4319.0\) & \(4319.0\) & \(0.0000\%\)\\\empty
+\(50-1000-1000-4-0.2-0.5\) & \(37110\) & \(81.93\) & \(5249.0\) & \(5249.0\) & \(0.0000\%\)\\\empty
+\(50-1000-1000-5-0.2-0.5\) & \(53495\) & \(123.06\) & \(5606.0\) & \(5606.0\) & \(0.0000\%\)\\\empty
+\(50-1000-1000-5-0.2-1.0\) & \(2865\) & \(2.84\) & \(5972.0\) & \(5972.0\) & \(0.0000\%\)\\\empty
+\(50-1000-1000-1-0.2-0.1\) & \(1334\) & \(2.60\) & \(5452.0\) & \(5452.0\) & \(0.0000\%\)\\\empty
+\(50-1000-1000-5-0.2-0.25\) & \(83125\) & \(300.01\) & \(4641.0\) & \(4276.0\) & \(7.8647\%\)\\\empty
+\(50-1000-1000-3-0.2-1.0\) & \(1216\) & \(2.36\) & \(5394.0\) & \(5394.0\) & \(0.0000\%\)\\\empty
+\(50-1000-1000-2-0.2-0.1\) & \(2959\) & \(1.98\) & \(5479.0\) & \(5479.0\) & \(0.0000\%\)\\\empty
+\(50-1000-1000-1-0.2-0.25\) & \(1137\) & \(1.77\) & \(5493.0\) & \(5493.0\) & \(0.0000\%\)\\\empty
+\(50-1000-1000-1-0.2-0.5\) & \(1052\) & \(1.35\) & \(5537.0\) & \(5537.0\) & \(0.0000\%\)\\\empty
+\(50-1000-1000-5-0.2-0.1\) & \(88652\) & \(300.01\) & \(3620.0\) & \(3287.0\) & \(9.1989\%\)\\\empty
+\(50-1000-1000-3-0.2-0.1\) & \(60654\) & \(300.01\) & \(3378.0\) & \(3035.0\) & \(10.1539\%\)\\\empty
+\(100-1000-1000-1-0.2-0.25\) & \(15187\) & \(300.01\) & \(6302.0\) & \(5030.0\) & \(20.1841\%\)\\\empty
+\(100-1000-1000-1-0.2-1.0\) & \(193219\) & \(300.01\) & \(7739.0\) & \(7651.0\) & \(1.1371\%\)\\\empty
+\(100-1000-1000-4-0.2-0.5\) & \(29662\) & \(300.01\) & \(7031.0\) & \(6738.0\) & \(4.1673\%\)\\\empty
+\(100-1000-1000-4-0.2-1.0\) & \(70020\) & \(162.75\) & \(7719.0\) & \(7719.0\) & \(0.0000\%\)\\\empty
+\(100-1000-1000-4-0.2-0.25\) & \(16539\) & \(300.01\) & \(5993.0\) & \(5115.0\) & \(14.6504\%\)\\\empty
+\(100-1000-1000-5-0.2-0.1\) & \(22401\) & \(300.02\) & \(5151.0\) & \(3733.0\) & \(27.5286\%\)\\\empty
+\(100-1000-1000-3-0.2-1.0\) & \(34861\) & \(67.79\) & \(7301.0\) & \(7301.0\) & \(0.0000\%\)\\\empty
+\(100-1000-1000-2-0.2-0.25\) & \(28719\) & \(300.00\) & \(6489.0\) & \(5732.0\) & \(11.6659\%\)\\\empty
+\(100-1000-1000-2-0.2-1.0\) & \(130330\) & \(300.01\) & \(7637.0\) & \(7487.0\) & \(1.9641\%\)\\\empty
+\(100-1000-1000-5-0.2-1.0\) & \(16081\) & \(26.59\) & \(7938.0\) & \(7938.0\) & \(0.0000\%\)\\\empty
+\(100-1000-1000-3-0.2-0.5\) & \(105445\) & \(126.71\) & \(7208.0\) & \(7208.0\) & \(0.0000\%\)\\\empty
+\(100-1000-1000-5-0.2-0.25\) & \(14676\) & \(300.01\) & \(6327.0\) & \(5300.0\) & \(16.2320\%\)\\\empty
+\(100-1000-1000-5-0.2-0.5\) & \(30079\) & \(300.00\) & \(7578.0\) & \(7147.0\) & \(5.6875\%\)\\\empty
+\(100-1000-1000-3-0.2-0.1\) & \(34745\) & \(52.22\) & \(6657.0\) & \(6657.0\) & \(0.0000\%\)\\\empty
+\(100-1000-1000-2-0.2-0.5\) & \(45534\) & \(300.00\) & \(7258.0\) & \(7060.0\) & \(2.7280\%\)\\\empty
+\(100-1000-1000-1-0.2-0.1\) & \(13695\) & \(300.01\) & \(4821.0\) & \(3685.0\) & \(23.5636\%\)\\\empty
+\(100-1000-1000-1-0.2-0.5\) & \(24348\) & \(300.01\) & \(7141.0\) & \(6731.0\) & \(5.7415\%\)\\\empty
+\(100-1000-1000-3-0.2-0.25\) & \(51760\) & \(98.92\) & \(7002.0\) & \(7002.0\) & \(0.0000\%\)\\\empty
+\(100-1000-1000-2-0.2-0.1\) & \(39069\) & \(300.01\) & \(5479.0\) & \(4998.0\) & \(8.7790\%\)\\\empty
+\(100-1000-1000-4-0.2-0.1\) & \(22900\) & \(300.01\) & \(4821.0\) & \(3826.0\) & \(20.6389\%\)\\\empty
+\end{tabular}
+\end{center}
+
+\begin{center}
+\begin{tabular}{llllll}
+Instância & Nº de nós & Tempo (s) & Objetivo & Limitante & GAP\\\empty
+\hline
+\(500-1000-1000-3-0.2-0.1\) & \(3226\) & \(300.01\) & - & \(6597.0\) & -\\\empty
+\(500-1000-1000-3-0.2-1.0\) & \(9870\) & \(300.01\) & - & \(15840.0\) & -\\\empty
+\(500-1000-1000-4-0.2-0.25\) & \(5187\) & \(300.09\) & - & \(8960.0\) & -\\\empty
+\(500-1000-1000-1-0.2-0.25\) & \(3750\) & \(300.20\) & - & \(8760.0\) & -\\\empty
+\(500-1000-1000-5-0.2-1.0\) & \(9233\) & \(300.01\) & - & \(16098.0\) & -\\\empty
+\(500-1000-1000-2-0.2-0.5\) & \(5207\) & \(300.01\) & - & \(13743.0\) & -\\\empty
+\(500-1000-1000-5-0.2-0.1\) & \(3835\) & \(300.01\) & - & \(5980.0\) & -\\\empty
+\(500-1000-1000-4-0.2-0.1\) & \(3081\) & \(300.21\) & - & \(6332.0\) & -\\\empty
+\(500-1000-1000-5-0.2-0.25\) & \(5369\) & \(300.01\) & - & \(8631.0\) & -\\\empty
+\(500-1000-1000-4-0.2-0.5\) & \(4630\) & \(300.02\) & - & \(13556.0\) & -\\\empty
+\(500-1000-1000-1-0.2-0.1\) & \(3726\) & \(300.01\) & - & \(5994.0\) & -\\\empty
+\(500-1000-1000-3-0.2-0.5\) & \(4854\) & \(300.12\) & - & \(13775.0\) & -\\\empty
+\(500-1000-1000-1-0.2-1.0\) & \(10265\) & \(300.01\) & - & \(16105.0\) & -\\\empty
+\(500-1000-1000-1-0.2-0.5\) & \(5291\) & \(300.05\) & - & \(13702.0\) & -\\\empty
+\(500-1000-1000-5-0.2-0.5\) & \(5194\) & \(300.06\) & - & \(13779.0\) & -\\\empty
+\(500-1000-1000-2-0.2-0.1\) & \(3809\) & \(300.01\) & - & \(6094.0\) & -\\\empty
+\(500-1000-1000-2-0.2-1.0\) & \(9087\) & \(300.00\) & - & \(16077.0\) & -\\\empty
+\(500-1000-1000-3-0.2-0.25\) & \(4192\) & \(300.01\) & - & \(8837.0\) & -\\\empty
+\(500-1000-1000-4-0.2-1.0\) & \(10426\) & \(300.00\) & - & \(15686.0\) & -\\\empty
+\(500-1000-1000-2-0.2-0.25\) & \(3139\) & \(300.01\) & - & \(8873.0\) & -\\\empty
+\(1000-1000-1000-4-0.2-0.25\) & \(1\) & \(300.04\) & - & \(11615.0\) & -\\\empty
+\(1000-1000-1000-4-0.2-0.1\) & \(1\) & \(300.01\) & - & \(7840.0\) & -\\\empty
+\(1000-1000-1000-4-0.2-0.5\) & \(1\) & \(300.02\) & - & \(17260.0\) & -\\\empty
+\(1000-1000-1000-3-0.2-0.1\) & \(1\) & \(300.04\) & - & \(7730.0\) & -\\\empty
+\(1000-1000-1000-5-0.2-0.5\) & \(1\) & \(300.07\) & - & \(17652.0\) & -\\\empty
+\(1000-1000-1000-2-0.2-1.0\) & \(3015\) & \(300.03\) & - & \(22710.0\) & -\\\empty
+\(1000-1000-1000-5-0.2-0.1\) & \(1\) & \(300.02\) & - & \(8227.0\) & -\\\empty
+\(1000-1000-1000-1-0.2-1.0\) & \(3399\) & \(300.03\) & - & \(22272.0\) & -\\\empty
+\(1000-1000-1000-4-0.2-1.0\) & \(2508\) & \(300.04\) & - & \(22280.0\) & -\\\empty
+\(1000-1000-1000-2-0.2-0.25\) & \(1\) & \(300.05\) & - & \(11660.0\) & -\\\empty
+\(1000-1000-1000-2-0.2-0.5\) & \(1\) & \(300.04\) & - & \(17484.0\) & -\\\empty
+\(1000-1000-1000-2-0.2-0.1\) & \(1\) & \(300.01\) & - & \(7712.0\) & -\\\empty
+\(1000-1000-1000-1-0.2-0.25\) & \(1\) & \(300.02\) & - & \(11845.0\) & -\\\empty
+\(1000-1000-1000-3-0.2-0.5\) & \(1\) & \(300.02\) & - & \(17664.0\) & -\\\empty
+\(1000-1000-1000-1-0.2-0.1\) & \(1\) & \(300.01\) & - & \(7859.0\) & -\\\empty
+\(1000-1000-1000-5-0.2-1.0\) & \(2681\) & \(300.06\) & - & \(22697.0\) & -\\\empty
+\(1000-1000-1000-3-0.2-1.0\) & \(2793\) & \(300.03\) & - & \(22656.0\) & -\\\empty
+\(1000-1000-1000-3-0.2-0.25\) & \(1\) & \(300.11\) & - & \(11776.0\) & -\\\empty
+\(1000-1000-1000-1-0.2-0.5\) & \(1\) & \(300.03\) & - & \(17415.0\) & -\\\empty
+\(1000-1000-1000-5-0.2-0.25\) & \(1\) & \(300.06\) & - & \(12046.0\) & -\\\empty
+\end{tabular}
+\end{center}
+\end{document}
