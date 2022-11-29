@@ -1,4 +1,4 @@
-% Created 2022-11-12 sáb 22:34
+% Created 2022-11-12 sáb 22:52
 % Intended LaTeX compiler: pdflatex
 \documentclass[11pt]{article}
 \usepackage[utf8]{inputenc}
@@ -33,13 +33,13 @@
 \maketitle
 
 \section{Problema}
-\label{sec:org4abcc98}
+\label{sec:orgd53b207}
 Neste projeto, estudaremos o problema conhecido como \emph{Travelling Sales Man with Drone} (TSP-D). Assim como no TSP clássico, temos um digrafo \(G = (V,A)\) e queremos visitar todos os nós. Porém, neste caso, dispomos de um caminhão e um drone que pode auxiliar nas visitas. O drone deve partir e voltar para o caminhão após cada visita e esta deve respeitar o limite de distância \(D\) do drone. O caminhão parte do nó \(s\) e deve terminar, com o drone, no nó \(t\). Nosso objetivo é minimizar a soma dos custos do caminhão (\(c_{ij}\)) e do drone (\(d_{ij}\)).
 
 Assim, uma solução para o problema é composta de um caminho de \(s\) a \(t\) descrito por \(P = (V_P, A_P)\) e de um conjunto de arcos \(B\). \(V_P \subseteq V\) é o conjunto de nós do caminho \(P\) e \(A_P \subseteq A\) o conjunto de arcos que o compõe. Já o conjunto \(B \subseteq V \setminus V_p \times V_P\) é um conjunto que se \((i,j) \in B\), então \((i,j) \notin A_P\) (e \((j,i) \notin A\)) e \(d_{ij} + d_{ji} \leq D\). Além disso, para cada nó \(i \in V \setminus V_P\) há exatamente um par \((i,j) \in B\), para algum \(j \in V_P\).
 
 \section{Formulação Inteira}
-\label{sec:org878abad}
+\label{sec:org73f3907}
 Seja \(V' = V \setminus \{s,t\}\). Usaremos \(2\) variáveis binárias:
 \begin{itemize}
 \item \(x_{ij}\) é igual a \(1\) se, e somente se, o caminhão percorre a aresta \((i,j) \in A\).
@@ -62,7 +62,7 @@ Além disso, usaremos as variáveis \(u_i\) para atribuir um peso ao nó \(i\) p
 &                 &&       & a_i &\in \mathbb{R}_+                                             &         & \forall i \in V
 \end{alignat}
 
-Nossa função objetivo é bem direta: soma dos custos do caminhão e do drone. Restrição \(2\) e \(3\) garantem que o caminhão irá partir de \(s\) e chegar em \(t\). Restrição \(4\) garante a manutenção de fluxo enquanto restrição \(5\) evita ciclos. Restrição \(6\) garante que toda viagem do drone irá voltar para o nó que partiu e restrição \(7\) garante que ele só partirá de um nó visitado pelo caminhão. Restrição \(8\) garante que todos os nós serão visitados, ou pelo caminhão ou pelo drone. Restrição \(9\) força que as viagens do drone respeitem seu limite de distância. Por fim, restrições \(10\) e \(11\) definem o domínio das variáveis.
+Nossa função objetivo é bem direta: soma dos custos do caminhão e do drone. Restrição \(2\) e \(3\) garantem que o caminhão irá partir de \(s\) e chegar em \(t\). Restrição \(4\) garante a manutenção de fluxo enquanto restrição \(5\) evita ciclos. Restrição \(6\) garante que toda viagem do drone irá voltar para o nó que partiu e restrição \(7\) garante que ele só partirá de um nó visitado pelo caminhão. Restrição \(8\) garante que todos os nós serão visitados, ou pelo caminhão, ou pelo drone. Restrição \(9\) força que as viagens do drone respeitem seu limite de distância. Por fim, restrições \(10\) e \(11\) definem o domínio das variáveis.
 
 Suponha uma solução \((x,y)\) do programa linear inteiro acima. Diremos que \(P = (V_P, A_P)\), tal que \(A_P\) é composto dos arcos cujo \(x_{ij}\) é igual a \(1\) e \(V_P\) os nós incidentes dos ditos arcos (incluindo \(s\) e \(t\)). Pelas restrições \(2 - 5\), esse é um conjunto de arcos sem ciclos que partem de \(s\) e terminam em \(t\), compondo assim um caminho de \(s\) a \(t\).
 
@@ -73,7 +73,7 @@ Suponha uma solução \((P,B)\) e \(P = (V_P, A_P)\) do problema proposto. Para 
 Portanto, pelos argumentos apresentados acima e pelo fato das funções objetivo e custo serem as mesmas, dizemos que esta formulação de PLI formula o problema proposto.
 
 \section{Relaxação Lagrangiana}
-\label{sec:orge6c5754}
+\label{sec:org7699548}
 Rescrevendo restrição \(8\) da formulação da seção anterior, temos:
 $$
 1 - \sum_{j \in V, j \neq i} x_{ij} + y_{ij} \leq 0 \quad \forall i \in V
@@ -88,15 +88,15 @@ Utilizando a ideia de \textbf{relaxação lagrangiana}, iremos introduzir tal re
 
 A ideia é que, sendo \(\mu_i \geq 0\), quando a restrição \(8\) for violada, a função objetivo irá aumentar, causando assim um incentivo (proporcional a \(\mu_i\)) à relaxação satisfazê-la. Assim, nosso objetivo é encontrar um bom valor para \(\mu_i\).
 
-Para tal, utilizamos o \textbf{método do subgradientes}. Assim, iniciamos nosso gradiente como \(\mu_i^0 = 0\) para todo \(i \in V\) e, a cada iteração, atualizamos \(\mu_i^{k+1} = max\{\mu_i^k + \pi_k(1 - \sum_{j \in V, j \neq i} x_{ij} + y_{ij}) ,0\}\). Assim, a cada iteração, tomamos um passo na direção oposta ao subgradiente da restrição dualizada. A dificuldade recai em determinar o tamanho do passo \(\pi_k\).
+Para tal, utilizamos o \textbf{método do subgradientes}. Assim, iniciamos nosso gradiente como \(\mu_i^0 = 0\) para todo \(i \in V\) e, a cada iteração, atualizamos \(\mu_i^{k+1} = max\{\mu_i^k + \pi_k(1 - \sum_{j \in V, j \neq i} x_{ij} + y_{ij}) ,0\}\). Dessa forma, a cada iteração, tomamos um passo na direção oposta ao subgradiente da restrição dualizada. A dificuldade recai em determinar o tamanho do passo \(\pi_k\).
 
 \section{Resultados}
-\label{sec:org6185fbd}
-Para esse projeto, foram utilizadas as instâncias disponibilizadas pelo professor. Os experimentos foram realizados num LG Gram equipado com um Intel Core i5 de 8ª geração, quad-core, 1.6GHz, 8GB de memória ram. A máquina estava equipada com Linux Manjaro e foi utilizado o solver Gurobi versão 9.5.2.
+\label{sec:org7ba2c38}
+Para esse projeto, foram utilizadas as instâncias disponibilizadas pelo professor. Os experimentos foram realizados num LG Gram equipado com um Intel Core i5 de 8ª geração, quad-core, 1.6GHz, 8GB de memória ram. A máquina estava equipada com Linux Manjaro e sendo utilizado o solver Gurobi versão 9.5.2.
 
 Nas tabelas abaixo encontram-se os resultados do experimento. A coluna número de nós se refere a quantidade de nós visitados na árvore de branch-and-bound. Utilizamos como tempo limite \(300\) segundos.
 
-Percebemos que o modelo conseguiu resolver muito bem instâncias com menos de \(30\) vértices, razoavelmente a maioria das instância entre \(50\) e \(100\) mas falhou em achar qualquer solução para insâncias maiores que \(500\) vértices.
+Percebemos que o modelo conseguiu resolver muito bem instâncias com menos de \(30\) vértices, razoavelmente a maioria das instâncias entre \(50\) e \(100\), mas falhou em achar qualquer solução para instâncias maiores que \(500\) vértices.
 
 
 \appendix
