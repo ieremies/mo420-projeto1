@@ -22,8 +22,8 @@ LEMONLIB  = -L$(LEMONDIR)/lib   -lemon
 #================= GUROBI =====================================================
 # If Gurobi is installed, there is a program called gurobi_cl that can be used to
 # detect the version
-GUROBI_DIR = /opt/gurobi952/linux64
-FLAGVERSION := $(shell gurobi_cl --version | cut -c 26,28 | head -n 1)
+GUROBI_DIR = /opt/gurobi1000/linux64
+FLAGVERSION := 100
 
 HOMEDIR = .
 

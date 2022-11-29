@@ -111,6 +111,122 @@ bool Read_Proj1_Instance(string filename, Digraph &dg, DNodeStringMap &vname,
   return (r);
 }
 
+class subtourelim : public GRBCallback {
+  Drone_Data &drone;
+  Digraph::ArcMap<GRBVar> &x;
+  double (GRBCallback::*solution_value)(GRBVar);
+
+public:
+  subtourelim(Drone_Data &drone, Digraph::ArcMap<GRBVar> &x)
+      : drone(drone), x(x) {}
+
+protected:
+  void callback() {
+    // --------------------------------------------------------------------------------
+    // get the correct function to obtain the values of the lp variables
+    // if this condition is true, all variables are integer
+    if (where == GRB_CB_MIPSOL) {
+      solution_value = &subtourelim::getSolution;
+    } else if ((where == GRB_CB_MIPNODE) &&
+               (getIntInfo(GRB_CB_MIPNODE_STATUS) ==
+                GRB_OPTIMAL)) // node with optimal fractional solution
+    {
+      solution_value = &subtourelim::getNodeRel;
+    } else
+      return; // return, as this code do not take advantage of the other
+              // options
+
+    // --------------------------------------------------------------------------------
+    // Stores the edges with fractional values and integer values
+    vector<Arc> FracArcs, OneArcs;
+    // produces a subgraph h of g, with arcs a with x[a]==1
+    // contracted, so we can apply Gomory-Hu tree in a small graph
+    for (ArcIt e(drone.dg); e != INVALID; ++e) {
+      if ((this->*solution_value)(x[e]) > 1 - MY_EPS)
+        OneArcs.push_back(e); // stores the edges with x[e]==1
+      else if ((this->*solution_value)(x[e]) > MY_EPS)
+        FracArcs.push_back(e); // includes edges with 0 < x[e] < 1
+    } // define the subgraph with edges that have x[e]==1
+
+    try {
+      // --------------------------------------------------------------------------------
+      // Use union-find to contract nodes (to obtain graph where each component
+      // of g is contracted)
+      Digraph::NodeMap<int> aux_map(drone.dg);
+      UnionFind<Digraph::NodeMap<int>> UFNodes(aux_map);
+      for (Digraph::NodeIt v(drone.dg); v != INVALID; ++v)
+        UFNodes.insert(v);
+      for (auto e_it : OneArcs)
+        UFNodes.join(drone.dg.source(e_it),
+                     drone.dg.target(
+                         e_it)); // No problem if they are in a same component
+      // --------------------------------------------------------------------------------
+      // Put in a separate set all edges that are not inside a component
+      vector<Arc> CrossingArcs;
+      for (ArcIt e(drone.dg); e != INVALID; ++e)
+        if (UFNodes.find(drone.dg.source(e)) !=
+            UFNodes.find(drone.dg.target(e)))
+          CrossingArcs.push_back(e);
+      // --------------------------------------------------------------------------------
+      // Generate an inverted list UFIndexToNode to find the node that
+      // represents a component
+      vector<bool> ComponentIndex(drone.nnodes);
+      vector<Graph::Node> Index2h(drone.nnodes);
+      for (int i = 0; i < drone.nnodes; i++)
+        ComponentIndex[i] = false;
+      for (Digraph::NodeIt v(drone.dg); v != INVALID; ++v)
+        ComponentIndex[UFNodes.find(v)] = true;
+      // --------------------------------------------------------------------------------
+      // Generate graph of components, add one node for each component and edges
+      Graph h;
+      EdgeValueMap h_capacity(h);
+      for (int i = 0; i < drone.nnodes; i++) // add nodes to the graph h
+        if (ComponentIndex[i])
+          Index2h[i] = h.addNode();
+      for (auto e_it : FracArcs) {
+        Digraph::Node u = drone.dg.source(e_it), v = drone.dg.target(e_it);
+        Node hu = Index2h[UFNodes.find(u)], hv = Index2h[UFNodes.find(v)];
+        Edge a = h.addEdge(hu, hv); // add edges to the graph h
+        h_capacity[a] = (this->*solution_value)(x[e_it]);
+        // In the future, change this code to use only one edge, instead of
+        // paralel edges
+      }
+      // --------------------------------------------------------------------------------
+      GomoryHu<Graph, EdgeValueMap> ght(h, h_capacity);
+      ght.run();
+      // The Gomory-Hu tree is given as a rooted directed tree. Each node has
+      // an arc that points to its father. The root node has father -1.
+      // Remember that each arc in this tree represents a cut and the value of
+      // the arc is the weight of the corresponding cut. So, if an arc has
+      // weight less than 2, then we found a violated cut and in this case, we
+      // insert the corresponding constraint.
+
+      NodeBoolMap cutmap(h);
+      for (Graph::NodeIt u(h); u != INVALID; ++u) {
+        GRBLinExpr expr = 0;
+        if (ght.predNode(u) == INVALID)
+          continue; // skip the root node
+        if (ght.predValue(u) > 2.0 - MY_EPS)
+          continue; // value of the cut is good
+        ght.minCutMap(u, ght.predNode(u),
+                      cutmap); // now, we have a violated cut
+
+        // Percorre as arestas que cruzam alguma componente e insere as que
+        // pertencem ao corte
+        for (auto e_it : CrossingArcs) {
+          Digraph::Node u = drone.dg.source(e_it), v = drone.dg.target(e_it);
+          Node hu = Index2h[UFNodes.find(u)], hv = Index2h[UFNodes.find(v)];
+          if (cutmap[hu] != cutmap[hv])
+            expr += x[e_it];
+        }
+        addLazy(expr >= 2);
+      }
+    } catch (...) {
+      cout << "Error during callback..." << endl;
+    }
+  }
+};
+
 // Faca um algoritmo exato, trocando a construcao fake por uma que usa
 // formulacao inteira.
 bool Exact_Algorithm(Drone_Data &D, DNodeArcMap &car_route_predArc,
@@ -126,7 +242,7 @@ bool Exact_Algorithm(Drone_Data &D, DNodeArcMap &car_route_predArc,
   env.set(GRB_DoubleParam_TimeLimit, 300);
   GRBModel model = GRBModel(env);
   GRBLinExpr obj;
-  model.set(GRB_StringAttr_ModelName, "TSP-D");
+  model.set(GRB_StringAttr_ModelName, "DRONE-D");
   model.set(GRB_IntAttr_ModelSense, GRB_MINIMIZE);
 
   // Soma dos custos das arestas utilizadas pelo caminhão
@@ -223,179 +339,6 @@ bool Exact_Algorithm(Drone_Data &D, DNodeArcMap &car_route_predArc,
       drone_out[D.dg.source(e)] = e;
       cout << "D\t" << D.vname[D.dg.source(e)] << "\t-->\t"
            << D.vname[D.dg.target(e)] << "\t" << D.drone_cost[e] << endl;
-    }
-  }
-
-  return true;
-}
-
-double pi(int i) { return 16800 / (i + 1); }
-
-// Faca uma heuristica, trocando a construcao fake por uma heuristica
-bool Heuristic_Algorithm(Drone_Data &D, DNodeArcMap &car_route_predArc,
-                         DNodeArcMap &drone_in, DNodeArcMap &drone_out) {
-
-  // mu_0
-  double last = 0;
-  Digraph::NodeMap<double> mu(D.dg);
-  for (DNodeIt n(D.dg); n != INVALID; ++n)
-    mu[n] = 0.0;
-
-  Digraph::ArcMap<GRBVar> x(D.dg);  // arestas usadas pelo caminhão
-  Digraph::ArcMap<GRBVar> y(D.dg);  // arestas usadas pelo drone
-  Digraph::NodeMap<GRBVar> u(D.dg); //
-
-  for (int i = 0;; i++) {
-
-    //  ======================= GUROBI ==============================
-
-    GRBEnv env = GRBEnv();
-    GRBModel model = GRBModel(env);
-    GRBLinExpr obj;
-    model.set(GRB_StringAttr_ModelName, "TSP-D");
-    model.set(GRB_IntAttr_ModelSense, GRB_MINIMIZE);
-
-    // Soma dos custos das arestas utilizadas pelo caminhão
-    for (ArcIt e(D.dg); e != INVALID; ++e) {
-      x[e] = model.addVar(0.0, 1.0, 0.0, GRB_BINARY, "x");
-      y[e] = model.addVar(0.0, 1.0, 0.0, GRB_BINARY, "y");
-      obj += x[e] * D.car_cost[e] + y[e] * D.drone_cost[e];
-    }
-
-    for (DNodeIt n(D.dg); n != INVALID; ++n)
-      u[n] = model.addVar(0.0, D.nnodes, 0.0, GRB_CONTINUOUS, "u");
-
-    for (DNodeIt n(D.dg); n != INVALID; ++n)
-      obj += D.drone_limit * mu[n];
-
-    // Relaxação Lagrangiana da restrição de distância do drone
-    // for (ArcIt a(D.dg); a != INVALID; ++a)
-    //   for (ArcIt b(D.dg); b != INVALID; ++b)
-    //     if (D.dg.source(a) == D.dg.target(b) and
-    //         D.dg.target(a) == D.dg.source(b)) {
-    //       obj -= y[a] * D.drone_cost[a] - y[b] * D.drone_cost[b];
-    //     }
-
-    // Relaxação Lagrangiana da restrição de visitação
-    for (DNodeIt n(D.dg); n != INVALID; ++n) {
-      if (n == D.source or n == D.target)
-        continue;
-      for (OutArcIt e(D.dg, n); e != INVALID; ++e)
-        obj += x[e] + y[e];
-      obj -= mu[n];
-    }
-
-    model.setObjective(obj, GRB_MINIMIZE);
-    model.update();
-
-    // Source
-    GRBLinExpr c_source_in;
-    for (InArcIt e(D.dg, D.source); e != INVALID; ++e)
-      c_source_in += x[e];
-    model.addConstr(c_source_in == 0);
-    GRBLinExpr c_source_out;
-    for (OutArcIt e(D.dg, D.source); e != INVALID; ++e)
-      c_source_out += x[e];
-    model.addConstr(c_source_out == 1);
-
-    // Target
-    GRBLinExpr c_target_in;
-    for (InArcIt e(D.dg, D.target); e != INVALID; ++e)
-      c_target_in += x[e];
-    model.addConstr(c_target_in == 1);
-    GRBLinExpr c_target_out;
-    for (OutArcIt e(D.dg, D.target); e != INVALID; ++e)
-      c_target_out += x[e];
-    model.addConstr(c_target_out == 0);
-
-    // manutenção de fluxo
-    for (DNodeIt n(D.dg); n != INVALID; ++n) {
-      if (n == D.source or n == D.target)
-        continue;
-      GRBLinExpr c_fluxo;
-      for (InArcIt e(D.dg, n); e != INVALID; ++e)
-        c_fluxo += x[e];
-      for (OutArcIt e(D.dg, n); e != INVALID; ++e)
-        c_fluxo -= x[e];
-      model.addConstr(c_fluxo == 0);
-    }
-
-    // subciclo
-    for (ArcIt a(D.dg); a != INVALID; ++a)
-      if (D.dg.target(a) != D.source)
-        model.addConstr(u[D.dg.source(a)] - u[D.dg.target(a)] +
-                            D.nnodes * x[a] <=
-                        D.nnodes - 1);
-
-    // ida e volta do drone dentro do limite dele
-    for (ArcIt a(D.dg); a != INVALID; ++a)
-      for (ArcIt b(D.dg); b != INVALID; ++b)
-        if (D.dg.source(a) == D.dg.target(b) and
-            D.dg.target(a) == D.dg.source(b)) {
-          model.addConstr(y[a] == y[b]);
-          model.addConstr(y[a] * D.drone_cost[a] + y[b] * D.drone_cost[b] <=
-                          D.drone_limit);
-        }
-
-    // Para todo arco do drone, deve haver um arco do caminhão que chega
-    // nele
-    for (ArcIt a(D.dg); a != INVALID; ++a) {
-      GRBLinExpr c;
-      for (InArcIt e(D.dg, D.dg.source(a)); e != INVALID; ++e)
-        c += x[e];
-      for (InArcIt e(D.dg, D.dg.target(a)); e != INVALID; ++e)
-        c += x[e];
-      model.addConstr(c >= y[a]);
-    }
-
-    // Todos os vértices devem ser visitados ao menos uma vez
-    // for (DNodeIt n(D.dg); n != INVALID; ++n) {
-    //   if (n == D.source or n == D.target)
-    //     continue;
-    //   GRBLinExpr c;
-    //   for (InArcIt e(D.dg, n); e != INVALID; ++e)
-    //     c += x[e] + y[e];
-    //   model.addConstr(c >= 1);
-    // }
-
-    model.optimize();
-
-    // ============== PARADA =============================
-    if (abs(last - model.get(GRB_DoubleAttr_ObjVal)) < 0.001 || i >= 100) {
-      for (ArcIt e(D.dg); e != INVALID; ++e) {
-        if (x[e].get(GRB_DoubleAttr_X) > 0) {
-          car_route_predArc[D.dg.target(e)] = e;
-          cout << "C\t" << D.vname[D.dg.source(e)] << "\t-->\t"
-               << D.vname[D.dg.target(e)] << "\t" << D.car_cost[e] << endl;
-        }
-        if (y[e].get(GRB_DoubleAttr_X) > 0) {
-          drone_in[D.dg.target(e)] = e;
-          drone_out[D.dg.source(e)] = e;
-          cout << "D\t" << D.vname[D.dg.source(e)] << "\t-->\t"
-               << D.vname[D.dg.target(e)] << "\t" << D.drone_cost[e] << endl;
-        }
-      }
-      return true;
-    }
-    last = model.get(GRB_DoubleAttr_ObjVal);
-
-    // ============== SUBGRADIENTE =======================
-    for (DNodeIt n(D.dg); n != INVALID; ++n) {
-      // Calcula Ax - b
-      double viola = -1;
-      if (n == D.source or n == D.target)
-        continue;
-      for (OutArcIt e(D.dg, n); e != INVALID; ++e)
-        viola += x[e].get(GRB_DoubleAttr_X) + y[e].get(GRB_DoubleAttr_X);
-
-      if (viola < 0)
-        mu[n] += pi(i);
-      else
-        mu[n] -= pi(i);
-      if (mu[n] < 0)
-        mu[n] = 0.0;
-
-      cout << mu[n] << endl;
     }
   }
 
@@ -505,10 +448,6 @@ int main(int argc, char *argv[]) {
   DNodeArcMap car_route_predArc(D.dg);
   DNodeArcMap drone_out(D.dg), drone_in(D.dg);
 
-  if (argv[2][0] == 'e')
-    Exact_Algorithm(D, car_route_predArc, drone_in, drone_out);
-  else
-    Heuristic_Algorithm(D, car_route_predArc, drone_in, drone_out);
-
+  Exact_Algorithm(D, car_route_predArc, drone_in, drone_out);
   // View_Car_Drone_Routing(D, car_route_predArc, drone_in, drone_out);
 }
