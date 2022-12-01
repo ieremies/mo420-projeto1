@@ -4,3 +4,5 @@
 /vgcore.14485
 *.log
 *.o
+*.e
+/lib/
