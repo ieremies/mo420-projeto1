@@ -71,7 +71,7 @@ _MLO = $(_MLS:.cpp=.o)
 MYLIB_SRC = $(patsubst %,$(HOMEDIR_SRC)/%,$(_MLS))
 MYLIB_OBJ = $(patsubst %,$(HOMEDIR_OBJ)/%,$(_MLO))
 
-_EX_SEM_GUROBI = pli-projeto1.cpp
+_EX_SEM_GUROBI = pli-projeto.cpp
 
 _EX_COM_GUROBI =
 
