@@ -156,10 +156,8 @@ protected:
       UnionFind<Digraph::NodeMap<int>> UFNodes(aux_map);
       for (Digraph::NodeIt v(drone.dg); v != INVALID; ++v)
         UFNodes.insert(v);
-      for (auto e_it : OneArcs)
-        UFNodes.join(drone.dg.source(e_it),
-                     drone.dg.target(
-                         e_it)); // No problem if they are in a same component
+      for (auto a : OneArcs)
+        UFNodes.join(drone.dg.source(a), drone.dg.target(a));
       // --------------------------------------------------------------------------------
       // Put in a separate set all edges that are not inside a component
       vector<Arc> CrossingArcs;
@@ -183,17 +181,17 @@ protected:
       for (int i = 0; i < drone.nnodes; i++) // add nodes to the graph h
         if (ComponentIndex[i])
           Index2h[i] = h.addNode();
-      for (auto e_it : FracArcs) {
-        Digraph::Node u = drone.dg.source(e_it), v = drone.dg.target(e_it);
+      for (auto a : FracArcs) {
+        Digraph::Node u = drone.dg.source(a), v = drone.dg.target(a);
         Node hu = Index2h[UFNodes.find(u)], hv = Index2h[UFNodes.find(v)];
-        Edge a = h.addEdge(hu, hv); // add edges to the graph h
-        h_capacity[a] = (this->*solution_value)(x[e_it]);
-        // In the future, change this code to use only one edge, instead of
-        // paralel edges
+        Edge e = h.addEdge(hu, hv); // add edges to the graph h
+        h_capacity[e] = (this->*solution_value)(x[a]);
       }
       // --------------------------------------------------------------------------------
       GomoryHu<Graph, EdgeValueMap> ght(h, h_capacity);
       ght.run();
+
+      // --------------------------------------------------------------------------------
       // The Gomory-Hu tree is given as a rooted directed tree. Each node has
       // an arc that points to its father. The root node has father -1.
       // Remember that each arc in this tree represents a cut and the value of
@@ -244,6 +242,7 @@ bool Exact_Algorithm(Drone_Data &D, DNodeArcMap &car_route_predArc,
   GRBLinExpr obj;
   model.set(GRB_StringAttr_ModelName, "DRONE-D");
   model.set(GRB_IntAttr_ModelSense, GRB_MINIMIZE);
+  model.getEnv().set(GRB_IntParam_LazyConstraints, 1);
 
   // Soma dos custos das arestas utilizadas pelo caminhão
   for (ArcIt e(D.dg); e != INVALID; ++e) {
@@ -325,6 +324,9 @@ bool Exact_Algorithm(Drone_Data &D, DNodeArcMap &car_route_predArc,
       c += x[e] + y[e]; // TODO eu acho que não precisa de x[e]
     model.addConstr(c >= 1);
   }
+
+  subtourelim cb = subtourelim(D, x);
+  model.setCallback(&cb);
 
   model.optimize();
 
