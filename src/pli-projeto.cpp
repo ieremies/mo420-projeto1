@@ -68,18 +68,6 @@ bool Read_Proj_Instance(string filename, Digraph &dg, DNodeStringMap &vname,
   if (!r)
     return (r);
 
-  // cout << "nnodes = " << nnodes << endl;
-  // cout << "narcs = " << narcs << endl;
-  // cout << "sourcename = " << sourcename << endl;
-  // cout << "targetname = " << targetname << endl;
-
-  // for (DNodeIt v(dg); v!=INVALID; ++v) {
-  //   cout << vname[v] << " " << px[v] << " " << py[v] << endl;}
-
-  // for (ArcIt a(dg); a!=INVALID; ++a) {
-  //   cout << vname[dg.source(a)] << " " << vname[dg.target(a)] << " " <<
-  //   car_cost[a] << " " << drone_cost[a] << endl;}
-
   source = INVALID;
   for (DNodeIt v(dg); v != INVALID; ++v) {
     if (vname[v] == sourcename) {
@@ -226,6 +214,16 @@ protected:
 bool Exact_Algorithm(Drone_Data &D, DNodeArcMap &car_route_predArc,
                      DNodeArcMap &drone_arc) {
 
+  // Onde tem custo da aresta -1, eh para considerar que a aresta nao existe.
+  double INF = 99999999999999.9;
+  for (ArcIt a(D.dg); a != INVALID; ++a) {
+    if (D.car_cost[a] < 0) {
+      D.car_cost[a] = INF;
+    }
+    if (D.drone_cost[a] < 0)
+      D.drone_cost[a] = INF;
+  }
+
   Digraph::ArcMap<GRBVar> x(D.dg);  // arestas usadas pelo caminhão
   Digraph::ArcMap<GRBVar> y(D.dg);  // arestas usadas pelo drone
   Digraph::NodeMap<GRBVar> u(D.dg); //
@@ -285,14 +283,18 @@ bool Exact_Algorithm(Drone_Data &D, DNodeArcMap &car_route_predArc,
   }
 
   // subciclo
-  for (ArcIt a(D.dg); a != INVALID; ++a)
-    if (D.dg.target(a) != D.source)
-      model.addConstr(u[D.dg.source(a)] - u[D.dg.target(a)] + D.nnodes * x[a] <=
-                      D.nnodes - 1);
+  if (!PROJ2)
+    for (ArcIt a(D.dg); a != INVALID; ++a)
+      if (D.dg.target(a) != D.source)
+        model.addConstr(u[D.dg.source(a)] - u[D.dg.target(a)] +
+                            D.nnodes * x[a] <=
+                        D.nnodes - 1);
 
   // Para todo arco do drone, deve haver um arco do caminhão que chega nele
   for (ArcIt a(D.dg); a != INVALID; ++a) {
     GRBLinExpr c;
+    if (D.dg.source(a) == D.source)
+      continue;
     for (InArcIt e(D.dg, D.dg.source(a)); e != INVALID; ++e)
       c += x[e];
     model.addConstr(c >= y[a]);
@@ -304,7 +306,7 @@ bool Exact_Algorithm(Drone_Data &D, DNodeArcMap &car_route_predArc,
       continue;
     GRBLinExpr c;
     for (InArcIt e(D.dg, n); e != INVALID; ++e)
-      c += x[e] + y[e]; // TODO eu acho que não precisa de x[e]
+      c += x[e] + y[e];
     model.addConstr(c >= 1);
   }
 
@@ -362,14 +364,11 @@ bool View_Car_Drone_Routing(Drone_Data &D, DNodeArcMap &car_route_predArc,
   for (ArcIt a(D.dg); a != INVALID; ++a)
     DA.SetColor(a, "Invis");
 
-  cout << "\nSolucao Fake:" << endl;
   v = D.target;
   while (v != D.source) {
     Arc a = car_route_predArc[v];
     DA.SetLabel(a, D.car_cost[a]);
     DA.SetFontSize(a, 20);
-    cout << "( " << D.vname[D.dg.source(a)] << " --> "
-         << D.vname[D.dg.target(a)] << ")" << endl;
     DA.SetColor(a, "Blue");
     v = D.dg.source(car_route_predArc[v]);
   }
@@ -403,7 +402,7 @@ int main(int argc, char *argv[]) {
 
   srand48(seed);
 
-  if (argc == 3)
+  if (argc > 2)
     PROJ2 = false;
 
   filename = argv[1];
@@ -415,6 +414,14 @@ int main(int argc, char *argv[]) {
   DNodeArcMap car_route_predArc(D.dg);
   DNodeArcMap drone_arc(D.dg);
 
-  Exact_Algorithm(D, car_route_predArc, drone_arc);
+  double INF = 99999999999999.9;
+  for (ArcIt a(D.dg); a != INVALID; ++a) {
+    if (D.car_cost[a] < 0)
+      D.car_cost[a] = INF;
+    if (D.drone_cost[a] < 0)
+      D.drone_cost[a] = INF;
+  }
+  // Exact_Algorithm(D, car_route_predArc, drone_arc);
+  tsp(D, car_route_predArc, drone_arc);
   View_Car_Drone_Routing(D, car_route_predArc, drone_arc);
 }
