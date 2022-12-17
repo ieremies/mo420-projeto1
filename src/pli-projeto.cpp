@@ -19,7 +19,7 @@
 #include <math.h>
 #include <set>
 
-bool PROJ2 = true;
+int PROJ2 = 1;
 
 // This is the type used to obtain the pointer to the problem data. This pointer
 // is stored in the branch and cut tree. And when we define separation routines,
@@ -119,64 +119,70 @@ protected:
     } else
       return; // return, as this code do not take advantage of the other
               // options
+    // -----------------------------------------------------------------
 
-    DNodeBoolMap visited(drone.dg);
-    bool subtour_found = false;
-    vector<Arc> subtour;
+    bool found = false;  // se um subciclo foi achado
+    vector<Arc> subtour; // o caminho atual
 
-    for (DNodeIt o_node(drone.dg); o_node != INVALID; ++o_node) {
-      // Setting all to not visited;
-      for (DNodeIt i(drone.dg); i != INVALID; ++i)
-        visited[i] = false;
-
-      DNode node = o_node;
-      visited[node] = true;
+    for (DNodeIt origin(drone.dg); origin != INVALID and !found; ++origin) {
+      // Inicializa as estruturas necessárias
+      DNodeBoolMap visited(drone.dg, false);
       subtour.clear();
 
-      // first arc
-      Digraph::Arc next;
-      for (OutArcIt a(drone.dg, drone.source); a != INVALID; ++a)
-        if ((this->*solution_value)(x[a]) > 1 - MY_EPS)
-          next = a;
+      // Nó inicial
+      DNode node = origin;
+      visited[node] = true;
 
-      bool flag = true;
-      while (flag) {
-        flag = false;
-        subtour.push_back(next);
-        node = drone.dg.target(next);
-        if (visited[node]) {
-          subtour_found = true;
-          break;
-        }
+      // Caminha pelo grafo
+      for (Arc arc = next(node); arc != INVALID and !found; arc = next(node)) {
+        subtour.push_back(arc);
+        node = drone.dg.target(arc);
+
+        // Se voltarmos para alguém já visitado, achamos um subciclo
+        if (visited[node])
+          found = true;
         visited[node] = true;
-        for (OutArcIt a(drone.dg, node); a != INVALID; ++a)
-          if ((this->*solution_value)(x[a]) > 1 - MY_EPS) {
-            flag = true;
-            next = a;
-          }
-      }
-      if (subtour_found) {
-        break;
       }
     }
 
-    for (auto e : subtour)
-      cout << "C\t" << drone.vname[drone.dg.source(e)] << "\t-->\t"
-           << drone.vname[drone.dg.target(e)] << "\t" << drone.car_cost[e]
-           << endl;
+    if (found) {
+      vector<DNode> comp;
+      bool flag = false;
+      for (Arc a : subtour)
+        comp.push_back(drone.dg.source(a));
 
-    if (subtour_found) {
-      GRBLinExpr expr = 0;
-      for (auto arc : subtour)
-        expr += x[arc];
-      addLazy(expr <= (subtour.size() - 1));
+      GRBLinExpr expr;
+
+      // Estratégia 1
+      if (PROJ2 == 1) {
+        for (Arc a : subtour)
+          expr += x[a];
+      }
+      if (PROJ2 == 2) {
+        for (int i = 0; i < comp.size(); i++)
+          for (int j = 0; j < comp.size(); j++) {
+            if (i == j)
+              continue;
+            Arc a = findArc(drone.dg, comp[i], comp[j]);
+            if (a != INVALID and drone.car_cost[a] > 0)
+              expr += x[a];
+          }
+      }
+
+      addLazy(expr <= (comp.size() - 1));
     }
 
     return;
   }
+
+  Arc next(DNode &n) {
+    for (OutArcIt a(drone.dg, n); a != INVALID; ++a)
+      if ((this->*solution_value)(x[a]) > 1 - MY_EPS)
+        return a;
+    return INVALID;
+  }
 };
-// Faca um algoritmo exato, trocando a construcao fake por uma que usa
-// formulacao inteira.
+
 bool Exact_Algorithm(Drone_Data &D, DNodeArcMap &car_route_predArc,
                      DNodeArcMap &drone_arc) {
 
@@ -287,13 +293,13 @@ bool Exact_Algorithm(Drone_Data &D, DNodeArcMap &car_route_predArc,
   for (ArcIt e(D.dg); e != INVALID; ++e) {
     if (x[e].get(GRB_DoubleAttr_X) > 0) {
       car_route_predArc[D.dg.target(e)] = e;
-      cout << "C\t" << D.vname[D.dg.source(e)] << "\t-->\t"
-           << D.vname[D.dg.target(e)] << "\t" << D.car_cost[e] << endl;
+      // cout << "C\t" << D.vname[D.dg.source(e)] << "\t-->\t"
+      //      << D.vname[D.dg.target(e)] << "\t" << D.car_cost[e] << endl;
     }
     if (y[e].get(GRB_DoubleAttr_X) > 0) {
       drone_arc[D.dg.target(e)] = e;
-      cout << "D\t" << D.vname[D.dg.source(e)] << "\t-->\t"
-           << D.vname[D.dg.target(e)] << "\t" << D.drone_cost[e] << endl;
+      // cout << "D\t" << D.vname[D.dg.source(e)] << "\t-->\t"
+      //      << D.vname[D.dg.target(e)] << "\t" << D.drone_cost[e] << endl;
     }
   }
 
@@ -432,8 +438,7 @@ int main(int argc, char *argv[]) {
   srand48(seed);
   set_pdfreader("zathura"); // pdf reader for Linux
 
-  if (argc > 2)
-    PROJ2 = false;
+  PROJ2 = atoi(argv[2]);
 
   filename = argv[1];
 
