@@ -13,8 +13,8 @@
 #include <lemon/adaptors.h>
 #include <lemon/connectivity.h>
 #include <lemon/dijkstra.h>
-#include <lemon/gomory_hu.h>
 #include <lemon/list_graph.h>
+#include <lemon/preflow.h>
 #include <lemon/unionfind.h>
 #include <math.h>
 #include <set>
@@ -186,12 +186,14 @@ bool Exact_Algorithm(Drone_Data &D, DNodeArcMap &car_route_predArc,
 
   GRBEnv env = GRBEnv();
   env.set(GRB_DoubleParam_TimeLimit, 300);
-  GRBModel model = GRBModel(env);
-  GRBLinExpr obj;
-  model.set(GRB_StringAttr_ModelName, "DRONE-D");
-  model.set(GRB_IntAttr_ModelSense, GRB_MINIMIZE);
   if (PROJ2)
     env.set(GRB_IntParam_LazyConstraints, 1);
+
+  GRBModel model = GRBModel(env);
+  model.set(GRB_StringAttr_ModelName, "DRONE-D");
+  model.set(GRB_IntAttr_ModelSense, GRB_MINIMIZE);
+
+  GRBLinExpr obj;
   GRBVar dummy_variable = model.addVar(0.0, 0.0, 0.0, GRB_BINARY, "");
   // Soma dos custos das arestas utilizadas pelo caminhão
   for (ArcIt e(D.dg); e != INVALID; ++e) {
@@ -298,6 +300,71 @@ bool Exact_Algorithm(Drone_Data &D, DNodeArcMap &car_route_predArc,
   return true;
 }
 
+int compute_sol_cost(Drone_Data &drone, vector<DNode> &path) {
+  DNodeBoolMap visited(drone.dg, false);
+  int cost = 0;
+  for (int i = 0; i < path.size() - 1; i++) {
+    Arc a = findArc(drone.dg, path[i], path[i + 1]);
+    if (a == INVALID || drone.car_cost[a] < 0)
+      return INFINITY;
+    cost += drone.car_cost[a];
+    visited[drone.dg.source(a)] = true;
+  }
+  visited[path[path.size() - 1]] = true;
+
+  for (DNodeIt n(drone.dg); n != INVALID; ++n) {
+    if (visited[n])
+      continue;
+
+    int min_cost = INFINITY;
+    for (auto u : path) {
+      Arc a = findArc(drone.dg, n, u);
+      if (a == INVALID || drone.car_cost[a] < 0)
+        continue;
+      if (drone.drone_cost[a] < min_cost)
+        min_cost = drone.car_cost[a];
+    }
+
+    if (min_cost == INFINITY)
+      return INFINITY;
+
+    cost += min_cost;
+  }
+  return cost;
+}
+
+bool heuristic(Drone_Data &drone) {
+  vector<DNode> path;
+  path.push_back(drone.source);
+  path.push_back(drone.target);
+  int current_cost = compute_sol_cost(drone, path);
+
+  // Para cada nó e cada posição,
+  // eu olho se ele entrar no caminho melhora ou não o custo
+  for (DNodeIt n(drone.dg); n != INVALID; ++n) {
+    if (n == drone.source || n == drone.target)
+      continue;
+
+    int melhor_posicao = 1;
+    int melhor_custo = INFINITY;
+    vector<DNode> teste;
+
+    for (int i = 1; i < path.size(); i++) {
+      teste = path;
+      teste.insert(teste.begin() + i, n);
+      int teste_cost = compute_sol_cost(drone, teste);
+      if (teste_cost < melhor_custo) {
+        melhor_custo = teste_cost;
+        melhor_posicao = i;
+      }
+      teste.clear();
+    }
+
+    path.insert(path.begin() + melhor_posicao, n);
+    current_cost = melhor_custo;
+  }
+  return true;
+}
 bool View_Car_Drone_Routing(Drone_Data &D, DNodeArcMap &car_route_predArc,
                             DNodeArcMap &drone_arc) {
   // Apenas para visualizar a solucao gerada
@@ -362,10 +429,8 @@ int main(int argc, char *argv[]) {
   string filename;
 
   int seed = 1;
-
-  set_pdfreader("zathura");
-
   srand48(seed);
+  set_pdfreader("zathura"); // pdf reader for Linux
 
   if (argc > 2)
     PROJ2 = false;
