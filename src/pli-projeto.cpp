@@ -121,43 +121,44 @@ protected:
               // options
     // -----------------------------------------------------------------
 
-    bool found = false;  // se um subciclo foi achado
-    vector<Arc> subtour; // o caminho atual
+    bool found = false;   // se um subciclo foi achado
+    vector<Arc> subcycle; // o caminho atual
 
-    for (DNodeIt origin(drone.dg); origin != INVALID and !found; ++origin) {
+    for (DNodeIt o(drone.dg); o != INVALID and !found; ++o) {
       // Inicializa as estruturas necessárias
       DNodeBoolMap visited(drone.dg, false);
-      subtour.clear();
+      subcycle.clear();
 
       // Nó inicial
-      DNode node = origin;
-      visited[node] = true;
+      DNode n = o;
+      visited[n] = true;
 
       // Caminha pelo grafo
-      for (Arc arc = next(node); arc != INVALID and !found; arc = next(node)) {
-        subtour.push_back(arc);
-        node = drone.dg.target(arc);
+      for (Arc a = next(n); a != INVALID and !found; a = next(n)) {
+        subcycle.push_back(a);
+        n = drone.dg.target(a);
 
         // Se voltarmos para alguém já visitado, achamos um subciclo
-        if (visited[node])
+        if (visited[n])
           found = true;
-        visited[node] = true;
+        visited[n] = true;
       }
     }
 
     if (found) {
       vector<DNode> comp;
       bool flag = false;
-      for (Arc a : subtour)
+      for (Arc a : subcycle)
         comp.push_back(drone.dg.source(a));
 
       GRBLinExpr expr;
 
       // Estratégia 1
       if (PROJ2 == 1) {
-        for (Arc a : subtour)
+        for (Arc a : subcycle)
           expr += x[a];
       }
+      // Estratégia 2
       if (PROJ2 == 2) {
         for (int i = 0; i < comp.size(); i++)
           for (int j = 0; j < comp.size(); j++) {
@@ -312,7 +313,7 @@ int compute_sol_cost(Drone_Data &drone, vector<DNode> &path) {
   for (int i = 0; i < path.size() - 1; i++) {
     Arc a = findArc(drone.dg, path[i], path[i + 1]);
     if (a == INVALID || drone.car_cost[a] < 0)
-      return INFINITY;
+      return 999999;
     cost += drone.car_cost[a];
     visited[drone.dg.source(a)] = true;
   }
@@ -322,7 +323,7 @@ int compute_sol_cost(Drone_Data &drone, vector<DNode> &path) {
     if (visited[n])
       continue;
 
-    int min_cost = INFINITY;
+    int min_cost = 999999;
     for (auto u : path) {
       Arc a = findArc(drone.dg, n, u);
       if (a == INVALID || drone.car_cost[a] < 0)
@@ -331,45 +332,72 @@ int compute_sol_cost(Drone_Data &drone, vector<DNode> &path) {
         min_cost = drone.car_cost[a];
     }
 
-    if (min_cost == INFINITY)
-      return INFINITY;
+    if (min_cost == 999999) {
+      cout << "CU!\n" << endl;
+      return 999999;
+    }
 
     cost += min_cost;
   }
   return cost;
 }
 
-bool heuristic(Drone_Data &drone) {
+int heu2(Drone_Data &drone) {
+
+  Digraph::ArcMap<int> map(drone.dg);
+  for (ArcIt a(drone.dg); a != INVALID; ++a)
+    if (drone.car_cost[a] >= 0)
+      map[a] = drone.car_cost[a];
+    else {
+      map[a] = 999999;
+      drone.car_cost[a] = 999999;
+    }
+
+  Dijkstra<ListDigraph, Digraph::ArcMap<int>> dk(drone.dg, map);
+
+  dk.init();
+  dk.addSource(drone.source);
+  dk.run(drone.source, drone.target);
+
+  cout << dk.dist(drone.target) << endl;
+
   vector<DNode> path;
-  path.push_back(drone.source);
-  path.push_back(drone.target);
+  DNode n = drone.target;
+  path.insert(path.begin(), n);
+
+  for (Arc a = dk.predArc(n); a != INVALID; a = dk.predArc(n)) {
+    n = drone.dg.source(a);
+    path.insert(path.begin(), n);
+  }
+
   int current_cost = compute_sol_cost(drone, path);
 
   // Para cada nó e cada posição,
   // eu olho se ele entrar no caminho melhora ou não o custo
-  for (DNodeIt n(drone.dg); n != INVALID; ++n) {
-    if (n == drone.source || n == drone.target)
-      continue;
+  while (current_cost >= 999999)
+    for (DNodeIt n(drone.dg); n != INVALID; ++n) {
+      if (find(path.begin(), path.end(), n) != path.end())
+        continue;
 
-    int melhor_posicao = 1;
-    int melhor_custo = INFINITY;
-    vector<DNode> teste;
+      int melhor_posicao = 1;
+      int melhor_custo = INFINITY;
+      vector<DNode> teste;
 
-    for (int i = 1; i < path.size(); i++) {
-      teste = path;
-      teste.insert(teste.begin() + i, n);
-      int teste_cost = compute_sol_cost(drone, teste);
-      if (teste_cost < melhor_custo) {
-        melhor_custo = teste_cost;
-        melhor_posicao = i;
+      for (int i = 1; i < path.size(); i++) {
+        teste = path;
+        teste.insert(teste.begin() + i, n);
+        int teste_cost = compute_sol_cost(drone, teste);
+        if (teste_cost < melhor_custo) {
+          melhor_custo = teste_cost;
+          melhor_posicao = i;
+        }
+        teste.clear();
       }
-      teste.clear();
-    }
 
-    path.insert(path.begin() + melhor_posicao, n);
-    current_cost = melhor_custo;
-  }
-  return true;
+      path.insert(path.begin() + melhor_posicao, n);
+      current_cost = melhor_custo;
+    }
+  return compute_sol_cost(drone, path);
 }
 bool View_Car_Drone_Routing(Drone_Data &D, DNodeArcMap &car_route_predArc,
                             DNodeArcMap &drone_arc) {
@@ -448,6 +476,7 @@ int main(int argc, char *argv[]) {
 
   DNodeArcMap car_route_predArc(D.dg);
   DNodeArcMap drone_arc(D.dg);
-  Exact_Algorithm(D, car_route_predArc, drone_arc);
-  View_Car_Drone_Routing(D, car_route_predArc, drone_arc);
+  cout << heu2(D);
+  // Exact_Algorithm(D, car_route_predArc, drone_arc);
+  // View_Car_Drone_Routing(D, car_route_predArc, drone_arc);
 }
