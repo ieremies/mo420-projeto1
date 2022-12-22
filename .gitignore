@@ -6,3 +6,5 @@
 *.o
 *.e
 /lib/
+/out/*.out
+vgcore\\*

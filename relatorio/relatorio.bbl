@@ -16,5 +16,62 @@
   {}
 \endgroup
 
+
+\refsection{0}
+  \datalist[entry]{nty/global//global/global}
+    \entry{Dolan2002Benchmarkingoptimizationsoftware}{article}{}
+      \name{author}{2}{}{%
+        {{hash=aae907590cbbab65e83b9ffbb205fce7}{%
+           family={Dolan},
+           familyi={D\bibinitperiod},
+           given={Elizabeth\bibnamedelima D.},
+           giveni={E\bibinitperiod\bibinitdelim D\bibinitperiod}}}%
+        {{hash=a9a66b314c9ad619a4bdf7ae4261f894}{%
+           family={Moré},
+           familyi={M\bibinitperiod},
+           given={Jorge\bibnamedelima J.},
+           giveni={J\bibinitperiod\bibinitdelim J\bibinitperiod}}}%
+      }
+      \list{publisher}{2}{%
+        {Springer Science}%
+        {Business Media LLC}%
+      }
+      \strng{namehash}{8a9cfc0a37b6fbc1c38c5c6a9feb7a5e}
+      \strng{fullhash}{8a9cfc0a37b6fbc1c38c5c6a9feb7a5e}
+      \strng{bibnamehash}{8a9cfc0a37b6fbc1c38c5c6a9feb7a5e}
+      \strng{authorbibnamehash}{8a9cfc0a37b6fbc1c38c5c6a9feb7a5e}
+      \strng{authornamehash}{8a9cfc0a37b6fbc1c38c5c6a9feb7a5e}
+      \strng{authorfullhash}{8a9cfc0a37b6fbc1c38c5c6a9feb7a5e}
+      \field{sortinit}{D}
+      \field{sortinithash}{6f385f66841fb5e82009dc833c761848}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{abstract}{We propose performance profiles {—} distribution functions for a performance metric {—} as a tool for benchmarking and comparing optimization software. We show that performance profiles combine the best features of other tools for performance evaluation.}
+      \field{day}{1}
+      \field{issn}{0025-5610, 1436-4646}
+      \field{journaltitle}{Mathematical Programming}
+      \field{langid}{english}
+      \field{month}{1}
+      \field{number}{2}
+      \field{shortjournal}{Mathematical Programming}
+      \field{title}{Benchmarking optimization software with performance profiles}
+      \field{urlday}{10}
+      \field{urlmonth}{6}
+      \field{urlyear}{2022}
+      \field{volume}{91}
+      \field{year}{2002}
+      \field{dateera}{ce}
+      \field{urldateera}{ce}
+      \field{pages}{201\bibrangedash 213}
+      \range{pages}{13}
+      \verb{doi}
+      \verb 10.1007/s101070100263
+      \endverb
+      \verb{file}
+      \verb :dolan_mor'e_2002_benchmarking_optimization_software_with_performance_profiles.pdf:
+      \endverb
+    \endentry
+  \enddatalist
+\endrefsection
 \endinput
 
